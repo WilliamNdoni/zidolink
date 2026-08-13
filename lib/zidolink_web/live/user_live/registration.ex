@@ -43,18 +43,17 @@ defmodule ZidolinkWeb.UserLive.Registration do
           />
 
           <fieldset class="fieldset mt-2">
-            <legend class="fieldset-legend">Join as</legend>
-            <label class="label cursor-pointer justify-start gap-2">
-              <input type="radio" name="user[join_as]" value="client" class="radio radio-sm" checked={@form[:join_as].value in [nil, "client"]} />
-              <span>Client — find and train with a trainer</span>
+            <label class="label cursor-pointer justify-start items-start gap-2">
+              <input type="radio" name="user[join_as]" value="client" class="radio radio-sm mt-1" checked={@form[:join_as].value in [nil, "client"]} />
+              <span class="whitespace-normal">Client — find and train with a trainer</span>
             </label>
-            <label class="label cursor-pointer justify-start gap-2">
-              <input type="radio" name="user[join_as]" value="trainer" class="radio radio-sm" checked={@form[:join_as].value == "trainer"} />
-              <span>Trainer — manage clients and sell your expertise</span>
+            <label class="label cursor-pointer justify-start items-start gap-2">
+              <input type="radio" name="user[join_as]" value="trainer" class="radio radio-sm mt-1" checked={@form[:join_as].value == "trainer"} />
+              <span class="whitespace-normal">Trainer — manage clients and sell your expertise</span>
             </label>
-            <label class="label cursor-pointer justify-start gap-2">
-              <input type="radio" name="user[join_as]" value="seller" class="radio radio-sm" checked={@form[:join_as].value == "seller"} />
-              <span>Seller — sell products, gear, or ebooks</span>
+            <label class="label cursor-pointer justify-start items-start gap-2">
+              <input type="radio" name="user[join_as]" value="seller" class="radio radio-sm mt-1" checked={@form[:join_as].value == "seller"} />
+              <span class="whitespace-normal">Seller — sell products, gear, or ebooks</span>
             </label>
           </fieldset>
 
@@ -73,8 +72,11 @@ defmodule ZidolinkWeb.UserLive.Registration do
     {:ok, redirect(socket, to: ZidolinkWeb.UserAuth.signed_in_path(socket))}
   end
 
-  def mount(_params, _session, socket) do
-    changeset = Accounts.change_user_registration(%User{}, %{}, validate_unique: false)
+  def mount(params, _session, socket) do
+    role = if params["role"] in ["client", "trainer", "seller"], do: params["role"], else: "client"
+
+    changeset =
+      Accounts.change_user_registration(%User{}, %{"join_as" => role}, validate_unique: false)
 
     {:ok, assign_form(socket, changeset), temporary_assigns: [form: nil]}
   end

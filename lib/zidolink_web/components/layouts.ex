@@ -35,29 +35,29 @@ defmodule ZidolinkWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <header class="navbar px-4 sm:px-6 lg:px-8">
+    <header class="navbar border-b border-base-300 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
-        <a href="/" class="flex-1 flex w-fit items-center gap-2">
-          <img src={~p"/images/logo.svg"} width="36" />
-          <span class="text-sm font-semibold">v{Application.spec(:phoenix, :vsn)}</span>
+        <a href="/" class="font-black text-xl">
+          ZIDO<span class="text-primary">LINK</span>
         </a>
       </div>
       <div class="flex-none">
-        <ul class="flex flex-column px-1 space-x-4 items-center">
-          <li>
-            <a href="https://phoenixframework.org/" class="btn btn-ghost">Website</a>
-          </li>
-          <li>
-            <a href="https://github.com/phoenixframework/phoenix" class="btn btn-ghost">GitHub</a>
-          </li>
-          <li>
-            <.theme_toggle />
-          </li>
-          <li>
-            <a href="https://hexdocs.pm/phoenix/overview.html" class="btn btn-primary">
-              Get Started <span aria-hidden="true">&rarr;</span>
-            </a>
-          </li>
+        <ul class="flex items-center gap-2">
+          <li><.theme_toggle /></li>
+          <%= if @current_scope do %>
+            <li class="text-sm opacity-60 px-2 hidden sm:block">{@current_scope.user.email}</li>
+            <li><.link href={~p"/users/settings"} class="btn btn-ghost btn-sm">Settings</.link></li>
+            <li>
+              <.link href={~p"/users/log-out"} method="delete" class="btn btn-ghost btn-sm">
+                Log out
+              </.link>
+            </li>
+          <% else %>
+            <li><.link href={~p"/users/log-in"} class="btn btn-ghost btn-sm">Log in</.link></li>
+            <li>
+              <.link href={~p"/users/register"} class="btn btn-primary btn-sm">Get Started</.link>
+            </li>
+          <% end %>
         </ul>
       </div>
     </header>
@@ -120,9 +120,9 @@ defmodule ZidolinkWeb.Layouts do
 
   See <head> in root.html.heex which applies the theme before page load.
   """
-  def theme_toggle(assigns) do
+def theme_toggle(assigns) do
     ~H"""
-    <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
+    <div class="hidden sm:flex card relative flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
       <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&]:left-1/3 [[data-theme=dark]_&]:left-2/3 transition-[left]" />
 
       <button
@@ -148,6 +148,29 @@ defmodule ZidolinkWeb.Layouts do
       >
         <.icon name="hero-moon-micro" class="size-4 opacity-75 hover:opacity-100" />
       </button>
+    </div>
+
+    <div class="dropdown dropdown-end sm:hidden">
+      <div tabindex="0" role="button" class="btn btn-ghost btn-sm btn-circle">
+        <.icon name="hero-sun-micro" class="size-4" />
+      </div>
+      <ul tabindex="0" class="dropdown-content menu bg-base-100 rounded-box z-10 w-40 p-2 shadow border border-base-300">
+        <li>
+          <button phx-click={JS.dispatch("phx:set-theme")} data-phx-theme="system">
+            <.icon name="hero-computer-desktop-micro" class="size-4" /> System
+          </button>
+        </li>
+        <li>
+          <button phx-click={JS.dispatch("phx:set-theme")} data-phx-theme="light">
+            <.icon name="hero-sun-micro" class="size-4" /> Light
+          </button>
+        </li>
+        <li>
+          <button phx-click={JS.dispatch("phx:set-theme")} data-phx-theme="dark">
+            <.icon name="hero-moon-micro" class="size-4" /> Dark
+          </button>
+        </li>
+      </ul>
     </div>
     """
   end

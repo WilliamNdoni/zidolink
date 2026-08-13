@@ -54,9 +54,19 @@ defmodule ZidolinkWeb.Router do
       on_mount: [{ZidolinkWeb.UserAuth, :require_authenticated}] do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
+      live "/apply", RoleApplicationLive.New, :new
     end
 
     post "/users/update-password", UserSessionController, :update_password
+  end
+
+  scope "/admin", ZidolinkWeb.Admin do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live_session :require_admin,
+      on_mount: [{ZidolinkWeb.UserAuth, :require_admin}] do
+      live "/applications", ApplicationLive.Index, :index
+    end
   end
 
   scope "/", ZidolinkWeb do

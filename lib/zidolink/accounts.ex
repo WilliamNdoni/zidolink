@@ -26,6 +26,12 @@ defmodule Zidolink.Accounts do
     Repo.get_by(User, email: email)
   end
 
+  def update_user_roles(%User{} = user, attrs) do
+    user
+    |> Ecto.Changeset.cast(attrs, [:roles, :pending_role_request])
+    |> Repo.update()
+  end
+
   @doc """
   Gets a user by email and password.
 
