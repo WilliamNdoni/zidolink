@@ -15,6 +15,10 @@ defmodule Zidolink.RoleApplications do
     |> Repo.one()
   end
 
+  def get_by_invoice_id(invoice_id) do
+    Repo.get_by(RoleApplication, invoice_id: invoice_id)
+  end
+
   def create_application(attrs) do
     %RoleApplication{}
     |> RoleApplication.changeset(attrs)
@@ -30,7 +34,7 @@ defmodule Zidolink.RoleApplications do
   def list_pending_applications do
     Repo.all(
       from a in RoleApplication,
-        where: a.status == "pending_review",
+        where: a.status == "pending_review" and a.payment_status == "complete",
         order_by: [asc: a.inserted_at]
     )
   end

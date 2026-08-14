@@ -2,6 +2,10 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
   use ZidolinkWeb, :live_view
 
   alias Zidolink.RoleApplications
+  alias Zidolink.Payments.Intasend
+
+  @poll_interval 3_000
+  @poll_timeout_ms 90_000
 
   @impl true
   def render(assigns) do
@@ -14,19 +18,35 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
               <.header>Nothing to apply for</.header>
               <p class="mt-4">You don't currently have a pending trainer or seller application.</p>
             </div>
-          <% @existing_application -> %>
+          <% @existing_application && @existing_application.payment_status == "complete" -> %>
             <div class="text-center">
               <.header>Application under review</.header>
               <p class="mt-4">
                 Your {@role} application was submitted and is being reviewed. We'll be in touch by email once there's a decision.
               </p>
             </div>
+          <% @existing_application && @existing_application.payment_status in ["awaiting_payment", "expired"] -> %>
+            <div class="text-center">
+              <.header>Check your phone</.header>
+              <p class="mt-4">
+                We've sent an M-Pesa prompt to confirm your KES {@signup_fee} application fee. Enter your PIN to continue.
+              </p>
+              <div :if={!@poll_timed_out} class="mt-6">
+                <span class="loading loading-spinner loading-md"></span>
+              </div>
+              <p :if={@poll_timed_out} class="mt-6 text-error">
+                We didn't receive confirmation — this sometimes happens. You can try again.
+              </p>
+              <.button :if={@poll_timed_out} phx-click="retry_payment" class="btn btn-primary mt-4">
+                Try again
+              </.button>
+            </div>
           <% true -> %>
             <div class="text-center">
               <.header>
                 Apply as a {String.capitalize(@role)}
                 <:subtitle>
-                  Tell us a bit about yourself so we can review your application.
+                  Tell us a bit about yourself. A KES {@signup_fee} application fee applies once you submit &mdash; refundable minus a {@refund_deduction_fee} KES processing fee if not approved.
                 </:subtitle>
               </.header>
             </div>
@@ -80,7 +100,7 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
               <% end %>
 
               <.button phx-disable-with="Submitting..." class="btn btn-primary w-full mt-4">
-                Submit application
+                Submit application &amp; pay KES {@signup_fee}
               </.button>
             </.form>
         <% end %>
@@ -92,16 +112,35 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
   @impl true
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
+    settings = Zidolink.PlatformSettings.get_settings()
     role = user.pending_role_request
     existing_application = role && RoleApplications.get_latest_application(user.id)
 
     form = to_form(%{}, as: "application")
 
+    {poll_timed_out, poll_deadline} =
+      case existing_application do
+        %{payment_status: "awaiting_payment"} ->
+          deadline = DateTime.add(DateTime.utc_now(), @poll_timeout_ms, :millisecond)
+          if connected?(socket), do: schedule_poll()
+          {false, deadline}
+
+        %{payment_status: "expired"} ->
+          {true, nil}
+
+        _ ->
+          {false, nil}
+      end
+
     {:ok,
      assign(socket,
        role: role,
        existing_application: existing_application,
-       form: form
+       form: form,
+       poll_timed_out: poll_timed_out,
+       poll_deadline: poll_deadline,
+       signup_fee: settings.signup_fee,
+       refund_deduction_fee: settings.refund_deduction_fee
      )}
   end
 
@@ -116,10 +155,11 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
     case RoleApplications.create_application(%{
            user_id: user.id,
            role: socket.assigns.role,
-           data: params
+           data: params,
+           payment_status: "awaiting_payment"
          }) do
       {:ok, application} ->
-        {:noreply, assign(socket, existing_application: application)}
+        {:noreply, trigger_payment(socket, application, user)}
 
       {:error, changeset} ->
         {:noreply,
@@ -127,5 +167,75 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
          |> put_flash(:error, "Something went wrong — please check the form and try again.")
          |> assign(form: to_form(changeset, as: "application"))}
     end
+  end
+
+  def handle_event("retry_payment", _params, socket) do
+    user = socket.assigns.current_scope.user
+    application = socket.assigns.existing_application
+
+    {:noreply,
+     socket
+     |> assign(poll_timed_out: false)
+     |> trigger_payment(application, user)}
+  end
+
+  @impl true
+  def handle_info(:poll_payment_status, socket) do
+    application = socket.assigns.existing_application
+
+    cond do
+      is_nil(application) or is_nil(application.invoice_id) ->
+        {:noreply, socket}
+
+      DateTime.compare(DateTime.utc_now(), socket.assigns.poll_deadline) == :gt ->
+        {:ok, updated} = RoleApplications.update_application(application, %{payment_status: "expired"})
+        {:noreply, assign(socket, existing_application: updated, poll_timed_out: true)}
+
+      true ->
+        case Intasend.check_status(application.invoice_id) do
+          {:ok, %{"invoice" => %{"state" => "COMPLETE"}}} ->
+            {:ok, updated} =
+              RoleApplications.update_application(application, %{payment_status: "complete"})
+
+            {:noreply, assign(socket, existing_application: updated)}
+
+          {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
+            {:ok, updated} =
+              RoleApplications.update_application(application, %{payment_status: "expired"})
+
+            {:noreply, assign(socket, existing_application: updated, poll_timed_out: true)}
+
+          _ ->
+            schedule_poll()
+            {:noreply, socket}
+        end
+    end
+  end
+
+  defp trigger_payment(socket, application, user) do
+    api_ref = "application-#{application.id}"
+
+    case Intasend.stk_push(user.phone, socket.assigns.signup_fee, api_ref) do
+      {:ok, %{"invoice" => %{"invoice_id" => invoice_id}}} ->
+        {:ok, updated} =
+          RoleApplications.update_application(application, %{invoice_id: invoice_id})
+
+        deadline = DateTime.add(DateTime.utc_now(), @poll_timeout_ms, :millisecond)
+        schedule_poll()
+
+        socket
+        |> assign(existing_application: updated, poll_deadline: deadline)
+
+      {:error, _reason} ->
+        put_flash(
+          socket,
+          :error,
+          "We couldn't start the payment request — please try again."
+        )
+    end
+  end
+
+  defp schedule_poll do
+    Process.send_after(self(), :poll_payment_status, @poll_interval)
   end
 end

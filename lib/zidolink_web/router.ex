@@ -66,6 +66,7 @@ defmodule ZidolinkWeb.Router do
     live_session :require_admin,
       on_mount: [{ZidolinkWeb.UserAuth, :require_admin}] do
       live "/applications", ApplicationLive.Index, :index
+      live "/settings", SettingsLive.Edit, :edit
     end
   end
 
