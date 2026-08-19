@@ -37,7 +37,7 @@ defmodule ZidolinkWeb.UserAuth do
 
     conn
     |> create_or_extend_session(user, params)
-    |> redirect(to: user_return_to || signed_in_path(conn))
+    |> redirect(to: user_return_to || home_path_for_user(user))
   end
 
   @doc """
@@ -272,10 +272,17 @@ defmodule ZidolinkWeb.UserAuth do
     end)
   end
 
-  @doc "Returns the path to redirect to after log in."
-  # the user was already logged in, redirect to settings
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{}}}}) do
-    ~p"/users/settings"
+  #  "Returns the path to redirect to after log in."
+  defp home_path_for_user(%Accounts.User{} = user) do
+    cond do
+      "admin" in user.roles -> ~p"/admin"
+      user.pending_role_request -> ~p"/apply"
+      true -> ~p"/dashboard"
+    end
+  end
+
+  def signed_in_path(%{assigns: %{current_scope: %Scope{user: %Accounts.User{} = user}}}) do
+    home_path_for_user(user)
   end
 
   def signed_in_path(_), do: ~p"/"

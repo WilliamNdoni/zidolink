@@ -28,8 +28,19 @@ defmodule ZidolinkWeb.Admin.ApplicationLive.Index do
           </div>
 
           <div class="mt-3 space-y-1 text-sm">
-            <p :for={{key, value} <- app.data}>
+            <p :for={{key, value} <- app.data} :if={key != "certificate_url"}>
               <span class="font-medium">{key}:</span> {value}
+            </p>
+            <p :if={app.data["certificate_url"]}>
+              <span class="font-medium">certificate:</span>
+              <a
+                href={app.data["certificate_url"]}
+                target="_blank"
+                rel="noopener"
+                class="link text-primary"
+              >
+                View certificate &rarr;
+              </a>
             </p>
           </div>
 

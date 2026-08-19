@@ -52,19 +52,73 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
             </div>
 
             <.form for={@form} id="application_form" phx-submit="save" phx-change="validate">
+              <.input
+                field={@form[:full_legal_name]}
+                type="text"
+                label="Full legal name"
+                required
+              />
+              <p class="text-sm text-base-content/60 -mt-2 mb-3">
+                For verification only — never shown publicly.
+              </p>
+
               <%= if @role == "trainer" do %>
-                <.input field={@form[:bio]} type="textarea" label="Bio" required />
                 <.input
-                  field={@form[:social_url]}
+                  field={@form[:display_name]}
                   type="text"
-                  label="Instagram / TikTok / social profile link"
+                  label="Display name (optional)"
+                />
+                <p class="text-sm text-base-content/60 -mt-2 mb-3">
+                  What clients will see on your profile — your name or a business name. Leave blank to use your legal name.
+                </p>
+
+                <.input field={@form[:bio]} type="textarea" label="Bio" required />
+
+                <.input
+                  field={@form[:social_platform]}
+                  type="select"
+                  label="Social media platform"
+                  options={[
+                    {"Instagram", "instagram"},
+                    {"TikTok", "tiktok"},
+                    {"Facebook", "facebook"},
+                    {"YouTube", "youtube"}
+                  ]}
                   required
                 />
                 <.input
-                  field={@form[:certification]}
+                  field={@form[:social_username]}
                   type="text"
-                  label="Certification (optional, e.g. ACE, ISSA, NASM)"
+                  label="Username"
+                  required
                 />
+
+                <div class="mt-2">
+                  <label class="label">Certification</label>
+                  <p class="text-sm text-base-content/60 mb-2">
+                    Upload a photo or PDF of your certification, if you have one (optional).
+                  </p>
+                  <.live_file_input
+                    upload={@uploads.certificate}
+                    class="file-input file-input-bordered w-full"
+                  />
+                  <div :for={entry <- @uploads.certificate.entries} class="mt-2 text-sm flex items-center gap-2">
+                    <.icon name="hero-document" class="size-4" />
+                    {entry.client_name}
+                    <progress class="progress progress-primary w-24" value={entry.progress} max="100"></progress>
+                    <button
+                      type="button"
+                      phx-click="cancel-upload"
+                      phx-value-ref={entry.ref}
+                      class="text-error"
+                    >
+                      &times;
+                    </button>
+                  </div>
+                  <p :for={err <- upload_errors(@uploads.certificate)} class="text-error text-sm mt-1">
+                    {error_to_string(err)}
+                  </p>
+                </div>
                 <.input
                   field={@form[:gym_affiliation]}
                   type="text"
@@ -85,12 +139,30 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
                   ]}
                   required
                 />
+
                 <.input
-                  field={@form[:social_url]}
-                  type="text"
-                  label="Instagram / TikTok / social profile link"
+                  field={@form[:social_platform]}
+                  type="select"
+                  label="Social media platform"
+                  options={[
+                    {"Instagram", "instagram"},
+                    {"TikTok", "tiktok"},
+                    {"Facebook", "facebook"},
+                    {"YouTube", "youtube"},
+                    {"WhatsApp Business", "whatsapp_business"}
+                  ]}
                   required
                 />
+                <p class="text-sm text-base-content/60 -mt-2 mb-3">
+                  Only use WhatsApp Business if you don't have Instagram, TikTok, Facebook, or YouTube for your shop.
+                </p>
+                <.input
+                  field={@form[:social_username]}
+                  type="text"
+                  label={if @form[:social_platform].value == "whatsapp_business", do: "WhatsApp Business number", else: "Username"}
+                  required
+                />
+
                 <.input
                   field={@form[:sample_products]}
                   type="textarea"
@@ -117,6 +189,14 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
     existing_application = role && RoleApplications.get_latest_application(user.id)
 
     form = to_form(%{}, as: "application")
+
+    socket =
+      allow_upload(socket, :certificate,
+        accept: ~w(.jpg .jpeg .png .pdf),
+        max_entries: 1,
+        max_file_size: 10_000_000,
+        auto_upload: false
+      )
 
     {poll_timed_out, poll_deadline} =
       case existing_application do
@@ -149,8 +229,26 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
     {:noreply, assign(socket, form: to_form(params, as: "application"))}
   end
 
+  def handle_event("cancel-upload", %{"ref" => ref}, socket) do
+    {:noreply, cancel_upload(socket, :certificate, ref)}
+  end
+
   def handle_event("save", %{"application" => params}, socket) do
     user = socket.assigns.current_scope.user
+
+    certificate_urls =
+      consume_uploaded_entries(socket, :certificate, fn %{path: path}, entry ->
+        case Zidolink.Media.Cloudinary.upload(path, entry.client_name) do
+          {:ok, %{"secure_url" => url}} -> {:ok, url}
+          {:error, _reason} -> {:ok, nil}
+        end
+      end)
+
+    params =
+      case certificate_urls do
+        [url] when is_binary(url) -> Map.put(params, "certificate_url", url)
+        _ -> params
+      end
 
     case RoleApplications.create_application(%{
            user_id: user.id,
@@ -241,4 +339,9 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
   defp schedule_poll do
     Process.send_after(self(), :poll_payment_status, @poll_interval)
   end
+
+  defp error_to_string(:too_large), do: "File is too large (max 10MB)"
+  defp error_to_string(:not_accepted), do: "Only images and PDFs are accepted"
+  defp error_to_string(:too_many_files), do: "Only one file allowed"
+
 end

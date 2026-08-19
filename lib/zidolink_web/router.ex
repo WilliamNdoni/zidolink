@@ -55,6 +55,7 @@ defmodule ZidolinkWeb.Router do
       live "/users/settings", UserLive.Settings, :edit
       live "/users/settings/confirm-email/:token", UserLive.Settings, :confirm_email
       live "/apply", RoleApplicationLive.New, :new
+      live "/dashboard", DashboardLive.Index, :index
     end
 
     post "/users/update-password", UserSessionController, :update_password
