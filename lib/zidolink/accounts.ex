@@ -95,6 +95,16 @@ defmodule Zidolink.Accounts do
     User.registration_changeset(user, attrs, opts)
   end
 
+  def change_user_phone(user, attrs \\ %{}, opts \\ []) do
+    User.phone_changeset(user, attrs, opts)
+  end
+
+  def update_user_phone(user, attrs) do
+    user
+    |> User.phone_changeset(attrs)
+    |> Repo.update()
+  end
+
   ## Settings
 
   @doc """

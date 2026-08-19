@@ -33,6 +33,26 @@ defmodule Zidolink.Accounts.User do
     |> validate_email(opts)
   end
 
+  def phone_changeset(user, attrs, opts \\ []) do
+    user
+    |> cast(attrs, [:phone])
+    |> validate_required([:phone])
+    |> validate_format(:phone, ~r/^2547\d{8}$/,
+      message: "must be a valid Safaricom number in the format 2547XXXXXXXX"
+    )
+    |> maybe_validate_unique_phone(opts)
+  end
+
+  defp maybe_validate_unique_phone(changeset, opts) do
+    if Keyword.get(opts, :validate_unique, true) do
+      changeset
+      |> unsafe_validate_unique(:phone, Zidolink.Repo)
+      |> unique_constraint(:phone)
+    else
+      changeset
+    end
+  end
+
   defp validate_email(changeset, opts) do
     changeset =
       changeset

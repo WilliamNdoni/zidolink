@@ -218,7 +218,10 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
     case Intasend.stk_push(user.phone, socket.assigns.signup_fee, api_ref) do
       {:ok, %{"invoice" => %{"invoice_id" => invoice_id}}} ->
         {:ok, updated} =
-          RoleApplications.update_application(application, %{invoice_id: invoice_id})
+          RoleApplications.update_application(application, %{
+            invoice_id: invoice_id,
+            amount_paid: socket.assigns.signup_fee
+          })
 
         deadline = DateTime.add(DateTime.utc_now(), @poll_timeout_ms, :millisecond)
         schedule_poll()

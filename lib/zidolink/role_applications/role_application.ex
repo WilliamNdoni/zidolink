@@ -14,6 +14,7 @@ defmodule Zidolink.RoleApplications.RoleApplication do
     field :reviewed_at, :utc_datetime
     field :invoice_id, :string
     field :payment_status, :string, default: "awaiting_payment"
+    field :amount_paid, :integer
 
     belongs_to :user, Zidolink.Accounts.User
 
@@ -30,6 +31,7 @@ defmodule Zidolink.RoleApplications.RoleApplication do
       :reviewed_at,
       :invoice_id,
       :payment_status,
+      :amount_paid,
       :user_id
     ])
     |> validate_required([:role, :user_id])

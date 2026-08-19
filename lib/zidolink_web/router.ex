@@ -65,8 +65,10 @@ defmodule ZidolinkWeb.Router do
 
     live_session :require_admin,
       on_mount: [{ZidolinkWeb.UserAuth, :require_admin}] do
+      live "/", DashboardLive.Index, :index
       live "/applications", ApplicationLive.Index, :index
       live "/settings", SettingsLive.Edit, :edit
+      live "/withdrawals", WithdrawalLive.Index, :index
     end
   end
 
@@ -83,4 +85,11 @@ defmodule ZidolinkWeb.Router do
     post "/users/log-in", UserSessionController, :create
     delete "/users/log-out", UserSessionController, :delete
   end
+
+  scope "/webhooks", ZidolinkWeb do
+    pipe_through :api
+
+    post "/intasend", WebhookController, :intasend
+  end
+
 end

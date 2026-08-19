@@ -30,6 +30,20 @@ defmodule ZidolinkWeb.UserLive.Settings do
 
       <div class="divider" />
 
+      <.form for={@phone_form} id="phone_form" phx-submit="update_phone" phx-change="validate_phone">
+        <.input
+          field={@phone_form[:phone]}
+          type="text"
+          label="Phone (Safaricom, e.g. 2547XXXXXXXX)"
+          autocomplete="tel"
+          spellcheck="false"
+          required
+        />
+        <.button variant="primary" phx-disable-with="Saving...">Save Phone</.button>
+      </.form>
+
+      <div class="divider" />
+
       <.form
         for={@password_form}
         id="password_form"
@@ -87,12 +101,14 @@ defmodule ZidolinkWeb.UserLive.Settings do
     user = socket.assigns.current_scope.user
     email_changeset = Accounts.change_user_email(user, %{}, validate_unique: false)
     password_changeset = Accounts.change_user_password(user, %{}, hash_password: false)
+    phone_changeset = Accounts.change_user_phone(user, %{}, validate_unique: false)
 
     socket =
       socket
       |> assign(:current_email, user.email)
       |> assign(:email_form, to_form(email_changeset))
       |> assign(:password_form, to_form(password_changeset))
+      |> assign(:phone_form, to_form(phone_changeset))
       |> assign(:trigger_submit, false)
 
     {:ok, socket}
@@ -129,6 +145,37 @@ defmodule ZidolinkWeb.UserLive.Settings do
 
       changeset ->
         {:noreply, assign(socket, :email_form, to_form(changeset, action: :insert))}
+    end
+  end
+
+  def handle_event("validate_phone", params, socket) do
+    %{"user" => user_params} = params
+
+    phone_form =
+      socket.assigns.current_scope.user
+      |> Accounts.change_user_phone(user_params, validate_unique: false)
+      |> Map.put(:action, :validate)
+      |> to_form()
+
+    {:noreply, assign(socket, phone_form: phone_form)}
+  end
+
+  def handle_event("update_phone", params, socket) do
+    %{"user" => user_params} = params
+    user = socket.assigns.current_scope.user
+
+    case Accounts.update_user_phone(user, user_params) do
+      {:ok, updated_user} ->
+        phone_form = Accounts.change_user_phone(updated_user, %{}, validate_unique: false)
+
+        {:noreply,
+         socket
+         |> put_flash(:info, "Phone number updated.")
+         |> assign(current_scope: %{socket.assigns.current_scope | user: updated_user})
+         |> assign(phone_form: to_form(phone_form))}
+
+      {:error, changeset} ->
+        {:noreply, assign(socket, phone_form: to_form(changeset, action: :insert))}
     end
   end
 

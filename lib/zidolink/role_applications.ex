@@ -38,4 +38,13 @@ defmodule Zidolink.RoleApplications do
         order_by: [asc: a.inserted_at]
     )
   end
+
+  def total_signup_revenue do
+    Repo.aggregate(
+      from(a in RoleApplication, where: a.payment_status == "complete"),
+      :sum,
+      :amount_paid
+    ) || 0
+  end
+
 end

@@ -37,4 +37,38 @@ defmodule Zidolink.Payments.Intasend do
       {:error, reason} -> {:error, reason}
     end
   end
+
+    def send_money(phone_number, amount, name) do
+    secret_key = System.get_env("INTASEND_SECRET_KEY")
+
+    case Req.post("#{@base_url}/send-money/initiate/",
+           headers: [{"authorization", "Bearer #{secret_key}"}],
+           json: %{
+             "provider" => "MPESA-B2C",
+             "currency" => "KES",
+             "requires_approval" => "NO",
+             "transactions" => [
+               %{"name" => name, "account" => phone_number, "amount" => amount}
+             ]
+           }
+         ) do
+      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
+      {:ok, %{status: status, body: body}} -> {:error, {status, body}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def check_send_money_status(tracking_id) do
+    secret_key = System.get_env("INTASEND_SECRET_KEY")
+
+    case Req.post("#{@base_url}/send-money/status/",
+           headers: [{"authorization", "Bearer #{secret_key}"}],
+           json: %{"tracking_id" => tracking_id}
+         ) do
+      {:ok, %{status: status, body: body}} when status in 200..299 -> {:ok, body}
+      {:ok, %{status: status, body: body}} -> {:error, {status, body}}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
 end
