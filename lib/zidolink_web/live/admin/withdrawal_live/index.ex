@@ -17,7 +17,7 @@ defmodule ZidolinkWeb.Admin.WithdrawalLive.Index do
         <div :for={w <- @withdrawals} class="mt-4 border rounded-lg p-4">
           <p class="font-semibold">{w.user.email} &mdash; KES {w.amount}</p>
           <p class="text-sm text-base-content/60">
-            {String.capitalize(w.status)} &middot; {Calendar.strftime(w.inserted_at, "%d %b %Y, %H:%M")}
+            {String.capitalize(w.status)} &middot; {ZidolinkWeb.TimeHelpers.format_eat(w.inserted_at)}
           </p>
           <p :if={w.provider_reference} class="text-sm text-base-content/60">
             Ref: {w.provider_reference}
