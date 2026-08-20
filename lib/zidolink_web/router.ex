@@ -21,6 +21,11 @@ defmodule ZidolinkWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live_session :public,
+      on_mount: [{ZidolinkWeb.UserAuth, :mount_current_scope}] do
+      live "/trainers", TrainerLive.Index, :index
+    end
   end
 
   # Other scopes may use custom stacks.

@@ -29,6 +29,14 @@ defmodule Zidolink.Profiles do
     get_trainer_profile_by_user_id(user_id) || %Zidolink.Profiles.TrainerProfile{user_id: user_id}
   end
 
+  def list_completed_trainer_profiles do
+    Repo.all(
+      from p in Zidolink.Profiles.TrainerProfile,
+        where: p.profile_completed == true,
+        order_by: [desc: p.inserted_at]
+    )
+  end
+
   ## Client profiles
 
   def get_client_profile_by_user_id(user_id) do

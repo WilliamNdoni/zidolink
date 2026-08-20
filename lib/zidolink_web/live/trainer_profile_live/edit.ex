@@ -82,6 +82,11 @@ defmodule ZidolinkWeb.TrainerProfileLive.Edit do
             name="trainer_profile[location_lng]"
             value={@form[:location_lng].value}
           />
+          <.input
+            type="hidden"
+            name="trainer_profile[location_address]"
+            value={@form[:location_address].value}
+          />
 
           <.button phx-disable-with="Saving..." class="btn btn-primary w-full mt-6">
             Save profile
@@ -125,7 +130,7 @@ defmodule ZidolinkWeb.TrainerProfileLive.Edit do
        form: to_form(changeset),
        profile: profile,
        photo_url: profile.photo_url,
-       location_address: nil,
+       location_address: profile.location_address,
        specialties_text: Enum.join(profile.specialties || [], ", "),
        google_maps_api_key: System.get_env("GOOGLE_MAPS_API_KEY")
      )}
