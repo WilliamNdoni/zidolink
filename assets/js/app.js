@@ -87,12 +87,23 @@ const LocationPicker = {
     const currentLocationBtn = this.el.querySelector("#use-current-location")
     currentLocationBtn.addEventListener("click", () => {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          this.pushEvent("location_selected", {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-            address: null
-          })
+        async (pos) => {
+          const lat = pos.coords.latitude
+          const lng = pos.coords.longitude
+          let address = null
+
+          try {
+            const { Geocoder } = await google.maps.importLibrary("geocoding")
+            const geocoder = new Geocoder()
+            const { results } = await geocoder.geocode({ location: { lat, lng } })
+            if (results && results.length > 0) {
+              address = results[0].formatted_address
+            }
+          } catch (err) {
+            address = null // fall back gracefully, coordinates alone are still useful
+          }
+
+          this.pushEvent("location_selected", { lat, lng, address })
         },
         () => alert("Could not get your location.")
       )

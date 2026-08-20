@@ -13,6 +13,7 @@ defmodule Zidolink.Profiles.TrainerProfile do
     field :display_name, :string
     field :photo_url, :string
     field :profile_completed, :boolean, default: false
+    field :location_address, :string
 
     belongs_to :user, Zidolink.Accounts.User
 
@@ -30,7 +31,8 @@ defmodule Zidolink.Profiles.TrainerProfile do
       :display_name,
       :photo_url,
       :profile_completed,
-      :user_id
+      :user_id,
+      :location_address
     ])
     |> validate_required([:user_id])
     |> foreign_key_constraint(:user_id)
