@@ -72,4 +72,16 @@ defmodule Zidolink.Profiles do
     |> SellerProfile.changeset(attrs)
     |> Repo.update()
   end
+
+  def get_or_build_seller_profile(user_id) do
+    get_seller_profile_by_user_id(user_id) || %Zidolink.Profiles.SellerProfile{user_id: user_id}
+  end
+
+  def list_completed_seller_profiles do
+    Repo.all(
+      from p in Zidolink.Profiles.SellerProfile,
+        where: p.profile_completed == true,
+        order_by: [desc: p.inserted_at]
+    )
+  end
 end

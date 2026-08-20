@@ -25,6 +25,7 @@ defmodule ZidolinkWeb.Router do
     live_session :public,
       on_mount: [{ZidolinkWeb.UserAuth, :mount_current_scope}] do
       live "/trainers", TrainerLive.Index, :index
+      live "/sellers", SellerLive.Index, :index
     end
   end
 
@@ -62,6 +63,7 @@ defmodule ZidolinkWeb.Router do
       live "/apply", RoleApplicationLive.New, :new
       live "/dashboard", DashboardLive.Index, :index
       live "/trainer/profile", TrainerProfileLive.Edit, :edit
+      live "/seller/profile", SellerProfileLive.Edit, :edit
     end
 
     post "/users/update-password", UserSessionController, :update_password

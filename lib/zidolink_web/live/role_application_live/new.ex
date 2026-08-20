@@ -128,17 +128,30 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
 
               <%= if @role == "seller" do %>
                 <.input field={@form[:shop_name]} type="text" label="Shop name" required />
-                <.input
-                  field={@form[:category]}
-                  type="select"
-                  label="Category"
-                  options={[
-                    {"Nutrition", "nutrition"},
-                    {"Gym equipment", "equipment"},
-                    {"Gym wear", "wear"}
-                  ]}
-                  required
-                />
+
+                <fieldset class="fieldset mt-2">
+                  <legend class="fieldset-legend">Categories (select all that apply)</legend>
+                  <label class="label cursor-pointer justify-start items-start gap-2">
+                    <input type="checkbox" name="application[categories][]" value="nutrition" class="checkbox checkbox-sm mt-1" checked={"nutrition" in (@form[:categories].value || [])} />
+                    <span class="whitespace-normal">Nutrition — supplements, meal prep, protein</span>
+                  </label>
+                  <label class="label cursor-pointer justify-start items-start gap-2">
+                    <input type="checkbox" name="application[categories][]" value="equipment" class="checkbox checkbox-sm mt-1" checked={"equipment" in (@form[:categories].value || [])} />
+                    <span class="whitespace-normal">Gym equipment</span>
+                  </label>
+                  <label class="label cursor-pointer justify-start items-start gap-2">
+                    <input type="checkbox" name="application[categories][]" value="wear" class="checkbox checkbox-sm mt-1" checked={"wear" in (@form[:categories].value || [])} />
+                    <span class="whitespace-normal">Gym wear</span>
+                  </label>
+                  <label class="label cursor-pointer justify-start items-start gap-2">
+                    <input type="checkbox" name="application[categories][]" value="accessories" class="checkbox checkbox-sm mt-1" checked={"accessories" in (@form[:categories].value || [])} />
+                    <span class="whitespace-normal">Accessories — bags, gloves, straps, bottles, resistance bands</span>
+                  </label>
+                  <label class="label cursor-pointer justify-start items-start gap-2">
+                    <input type="checkbox" name="application[categories][]" value="recovery" class="checkbox checkbox-sm mt-1" checked={"recovery" in (@form[:categories].value || [])} />
+                    <span class="whitespace-normal">Recovery & wellness — foam rollers, massage tools</span>
+                  </label>
+                </fieldset>
 
                 <.input
                   field={@form[:social_platform]}
@@ -343,5 +356,4 @@ defmodule ZidolinkWeb.RoleApplicationLive.New do
   defp error_to_string(:too_large), do: "File is too large (max 10MB)"
   defp error_to_string(:not_accepted), do: "Only images and PDFs are accepted"
   defp error_to_string(:too_many_files), do: "Only one file allowed"
-
 end
