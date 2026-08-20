@@ -3,7 +3,7 @@ defmodule ZidolinkWeb.TrainerLive.Index do
 
   alias Zidolink.Profiles
 
-  @default_radius_km 25
+  @default_radius_km 5
 
   @impl true
   def render(assigns) do
@@ -41,9 +41,20 @@ defmodule ZidolinkWeb.TrainerLive.Index do
               Use my current location
             </button>
           </div>
+
+          <form :if={@near_lat} phx-change="change_radius" class="mt-2">
+            <select name="radius" class="select select-bordered select-sm">
+              <option value="3" selected={@radius_km == 3}>Within 3km</option>
+              <option value="5" selected={@radius_km == 5}>Within 5km</option>
+              <option value="10" selected={@radius_km == 10}>Within 10km</option>
+              <option value="25" selected={@radius_km == 25}>Within 25km</option>
+              <option value="50" selected={@radius_km == 50}>Within 50km</option>
+            </select>
+          </form>
+
           <p :if={@near_location} class="text-sm text-base-content/80 mt-2 flex items-center gap-1">
             <.icon name="hero-map-pin" class="size-4" />
-            Showing trainers within {@default_radius_km}km of {@near_location}
+            Showing trainers within {@radius_km}km of {@near_location}
             <button type="button" phx-click="clear_near_me" class="btn btn-outline btn-secondary btn-xs ml-2">
               Clear
             </button>
@@ -94,7 +105,7 @@ defmodule ZidolinkWeb.TrainerLive.Index do
        near_lat: nil,
        near_lng: nil,
        near_location: nil,
-       default_radius_km: @default_radius_km,
+       radius_km: @default_radius_km,
        google_maps_api_key: System.get_env("GOOGLE_MAPS_API_KEY")
      )}
   end
@@ -106,8 +117,8 @@ defmodule ZidolinkWeb.TrainerLive.Index do
   end
 
   def handle_event("location_selected", params, socket) do
-    trainers =
-      Profiles.nearby_trainer_profiles(params["lat"], params["lng"], @default_radius_km, 1)
+    radius = socket.assigns.radius_km
+    trainers = Profiles.nearby_trainer_profiles(params["lat"], params["lng"], radius, 1)
 
     {:noreply,
      assign(socket,
@@ -120,6 +131,16 @@ defmodule ZidolinkWeb.TrainerLive.Index do
      )}
   end
 
+  def handle_event("change_radius", %{"radius" => radius_str}, socket) do
+    radius = String.to_integer(radius_str)
+
+    trainers =
+      Profiles.nearby_trainer_profiles(socket.assigns.near_lat, socket.assigns.near_lng, radius, 1)
+
+    {:noreply,
+     assign(socket, trainers: trainers, radius_km: radius, page: 1, has_more: length(trainers) == 12)}
+  end
+
   def handle_event("clear_near_me", _params, socket) do
     trainers = Profiles.search_trainer_profiles(socket.assigns.query, 1)
 
@@ -129,6 +150,7 @@ defmodule ZidolinkWeb.TrainerLive.Index do
        near_lat: nil,
        near_lng: nil,
        near_location: nil,
+       radius_km: @default_radius_km,
        page: 1,
        has_more: length(trainers) == 12
      )}
@@ -142,7 +164,7 @@ defmodule ZidolinkWeb.TrainerLive.Index do
         Profiles.nearby_trainer_profiles(
           socket.assigns.near_lat,
           socket.assigns.near_lng,
-          @default_radius_km,
+          socket.assigns.radius_km,
           next_page
         )
       else
