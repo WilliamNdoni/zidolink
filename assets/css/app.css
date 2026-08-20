@@ -110,3 +110,9 @@ html, body {
 html {
   scroll-behavior: smooth;
 }
+
+.label {
+  opacity: 1;
+  color: var(--color-base-content);
+  white-space: normal;
+}

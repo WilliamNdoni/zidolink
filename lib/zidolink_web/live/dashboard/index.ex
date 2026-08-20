@@ -1,6 +1,15 @@
 defmodule ZidolinkWeb.DashboardLive.Index do
   use ZidolinkWeb, :live_view
 
+  alias Zidolink.Profiles
+
+  @impl true
+  def mount(_params, _session, socket) do
+    user = socket.assigns.current_scope.user
+    trainer_profile = "trainer" in user.roles && Profiles.get_trainer_profile_by_user_id(user.id)
+    {:ok, assign(socket, trainer_profile: trainer_profile)}
+  end
+
   @impl true
   def render(assigns) do
     ~H"""
@@ -17,9 +26,17 @@ defmodule ZidolinkWeb.DashboardLive.Index do
 
         <div :if={"trainer" in @current_scope.user.roles} class="mt-6 border rounded-lg p-4">
           <h3 class="font-semibold">As a trainer</h3>
-          <p class="text-sm text-base-content/80 mt-1">
-            Setting up your public profile (bio, photo, location) is coming soon.
-          </p>
+          <%= if @trainer_profile && @trainer_profile.profile_completed do %>
+            <p class="text-sm text-base-content/80 mt-1">
+              Your profile is set up as {@trainer_profile.display_name || "your trainer profile"}.
+            </p>
+            <.link href={~p"/trainer/profile"} class="link text-sm">Edit profile &rarr;</.link>
+          <% else %>
+            <p class="text-sm text-base-content/80 mt-1">
+              Finish setting up your public profile so clients can find you.
+            </p>
+            <.link href={~p"/trainer/profile"} class="link text-sm">Set up profile &rarr;</.link>
+          <% end %>
         </div>
 
         <div :if={"seller" in @current_scope.user.roles} class="mt-6 border rounded-lg p-4">

@@ -25,6 +25,10 @@ defmodule Zidolink.Profiles do
     |> Repo.update()
   end
 
+  def get_or_build_trainer_profile(user_id) do
+    get_trainer_profile_by_user_id(user_id) || %Zidolink.Profiles.TrainerProfile{user_id: user_id}
+  end
+
   ## Client profiles
 
   def get_client_profile_by_user_id(user_id) do
