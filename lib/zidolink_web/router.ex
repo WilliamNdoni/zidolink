@@ -70,6 +70,7 @@ defmodule ZidolinkWeb.Router do
       live "/applications", ApplicationLive.Index, :index
       live "/settings", SettingsLive.Edit, :edit
       live "/withdrawals", WithdrawalLive.Index, :index
+      live "/location-test", LocationTestLive.Index, :index
     end
   end
 

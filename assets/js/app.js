@@ -25,11 +25,86 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/zidolink"
 import topbar from "../vendor/topbar"
 
+const LocationPicker = {
+  mounted() {
+    const apiKey = this.el.dataset.apiKey
+    this.requestId = 0
+    this.loadGoogleMaps(apiKey).then(() => this.setup())
+  },
+  loadGoogleMaps(apiKey) {
+    if (window.google && window.google.maps) return Promise.resolve()
+    return new Promise((resolve, reject) => {
+      window.__gmapsReady = resolve
+      const script = document.createElement("script")
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=__gmapsReady&loading=async`
+      script.async = true
+      script.onerror = reject
+      document.head.appendChild(script)
+    })
+  },
+  async setup() {
+    const { AutocompleteSuggestion, AutocompleteSessionToken } = await google.maps.importLibrary("places")
+    this.sessionToken = new AutocompleteSessionToken()
+
+    const input = this.el.querySelector("#location-search-input")
+    const resultsList = this.el.querySelector("#location-results")
+
+    input.addEventListener("input", async (e) => {
+      const requestId = ++this.requestId
+      const value = e.target.value
+
+      if (!value) {
+        resultsList.replaceChildren()
+        return
+      }
+
+      const request = { input: value, sessionToken: this.sessionToken }
+      const { suggestions } = await AutocompleteSuggestion.fetchAutocompleteSuggestions(request)
+
+      if (requestId !== this.requestId) return // a newer keystroke has since fired, discard this stale result
+
+      resultsList.replaceChildren()
+      suggestions.forEach((suggestion) => {
+        const placePrediction = suggestion.placePrediction
+        const li = document.createElement("li")
+        li.textContent = placePrediction.text.text
+        li.className = "px-3 py-2 cursor-pointer hover:bg-base-200"
+        li.addEventListener("click", async () => {
+          const place = placePrediction.toPlace()
+          await place.fetchFields({ fields: ["location", "formattedAddress"] })
+          input.value = place.formattedAddress
+          resultsList.replaceChildren()
+          this.pushEvent("location_selected", {
+            lat: place.location.lat(),
+            lng: place.location.lng(),
+            address: place.formattedAddress
+          })
+        })
+        resultsList.appendChild(li)
+      })
+    })
+
+    const currentLocationBtn = this.el.querySelector("#use-current-location")
+    currentLocationBtn.addEventListener("click", () => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          this.pushEvent("location_selected", {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+            address: null
+          })
+        },
+        () => alert("Could not get your location.")
+      )
+    })
+  }
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks},
+  hooks: {...colocatedHooks, LocationPicker},
 })
 
 // Show progress bar on live navigation and form submits
@@ -80,4 +155,3 @@ if (process.env.NODE_ENV === "development") {
     window.liveReloader = reloader
   })
 }
-
