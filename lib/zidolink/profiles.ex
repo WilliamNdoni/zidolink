@@ -37,6 +37,59 @@ defmodule Zidolink.Profiles do
     )
   end
 
+  @trainers_per_page 12
+
+  def search_trainer_profiles(query, page \\ 1)
+
+  def search_trainer_profiles(query, page) when query in [nil, ""] do
+    offset = (page - 1) * @trainers_per_page
+
+    Repo.all(
+      from p in Zidolink.Profiles.TrainerProfile,
+        where: p.profile_completed == true,
+        order_by: [desc: p.inserted_at],
+        limit: ^@trainers_per_page,
+        offset: ^offset
+    )
+  end
+
+  def search_trainer_profiles(query, page) do
+    pattern = "%#{query}%"
+    offset = (page - 1) * @trainers_per_page
+
+    Repo.all(
+      from p in Zidolink.Profiles.TrainerProfile,
+        where:
+          p.profile_completed == true and
+            (ilike(p.display_name, ^pattern) or
+               ilike(p.bio, ^pattern) or
+               fragment("EXISTS (SELECT 1 FROM unnest(?) AS s WHERE s ILIKE ?)", p.specialties, ^pattern)),
+        order_by: [desc: p.inserted_at],
+        limit: ^@trainers_per_page,
+        offset: ^offset
+    )
+  end
+
+  def nearby_trainer_profiles(lat, lng, radius_km, page \\ 1) do
+    offset = (page - 1) * @trainers_per_page
+    point = %Geo.Point{coordinates: {lng, lat}, srid: 4326}
+
+    Repo.all(
+      from p in Zidolink.Profiles.TrainerProfile,
+        where: p.profile_completed == true and not is_nil(p.location),
+        where:
+          fragment(
+            "ST_DWithin(?::geography, ?::geography, ?)",
+            p.location,
+            ^point,
+            ^(radius_km * 1000)
+          ),
+        order_by: fragment("ST_Distance(?::geography, ?::geography)", p.location, ^point),
+        limit: ^@trainers_per_page,
+        offset: ^offset
+    )
+  end
+
   ## Client profiles
 
   def get_client_profile_by_user_id(user_id) do
@@ -84,4 +137,6 @@ defmodule Zidolink.Profiles do
         order_by: [desc: p.inserted_at]
     )
   end
+
+
 end

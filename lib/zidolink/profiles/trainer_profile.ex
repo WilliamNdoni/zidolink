@@ -7,6 +7,7 @@ defmodule Zidolink.Profiles.TrainerProfile do
     field :specialties, {:array, :string}, default: []
     field :location_lat, :float
     field :location_lng, :float
+    field :location, Geo.PostGIS.Geometry
     field :accepting_new_clients, :boolean, default: true
     field :rating_avg, :float, default: 0.0
     field :rating_count, :integer, default: 0
@@ -31,11 +32,23 @@ defmodule Zidolink.Profiles.TrainerProfile do
       :display_name,
       :photo_url,
       :profile_completed,
-      :user_id,
-      :location_address
+      :location_address,
+      :user_id
     ])
     |> validate_required([:user_id])
     |> foreign_key_constraint(:user_id)
     |> unique_constraint(:user_id)
+    |> put_geo_point()
+  end
+
+  defp put_geo_point(changeset) do
+    lat = get_field(changeset, :location_lat)
+    lng = get_field(changeset, :location_lng)
+
+    if lat && lng do
+      put_change(changeset, :location, %Geo.Point{coordinates: {lng, lat}, srid: 4326})
+    else
+      changeset
+    end
   end
 end

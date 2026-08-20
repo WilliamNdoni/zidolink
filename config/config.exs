@@ -24,6 +24,9 @@ config :zidolink,
   ecto_repos: [Zidolink.Repo],
   generators: [timestamp_type: :utc_datetime]
 
+config :zidolink, Zidolink.Repo,
+  types: Zidolink.PostgresTypes
+
 # Configure the endpoint
 config :zidolink, ZidolinkWeb.Endpoint,
   url: [host: "localhost"],
