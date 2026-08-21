@@ -13,6 +13,10 @@ defmodule ZidolinkWeb.Router do
     plug :fetch_current_scope_for_user
   end
 
+  pipeline :capture_return_to do
+    plug :put_return_to_in_session
+  end
+
   pipeline :api do
     plug :accepts, ["json"]
   end
@@ -26,6 +30,7 @@ defmodule ZidolinkWeb.Router do
       on_mount: [{ZidolinkWeb.UserAuth, :mount_current_scope}] do
       live "/trainers", TrainerLive.Index, :index
       live "/sellers", SellerLive.Index, :index
+      live "/trainers/:id", TrainerLive.Show, :show
     end
   end
 
@@ -83,7 +88,7 @@ defmodule ZidolinkWeb.Router do
   end
 
   scope "/", ZidolinkWeb do
-    pipe_through [:browser]
+    pipe_through [:browser, :capture_return_to]
 
     live_session :current_user,
       on_mount: [{ZidolinkWeb.UserAuth, :mount_current_scope}] do
@@ -102,4 +107,10 @@ defmodule ZidolinkWeb.Router do
     post "/intasend", WebhookController, :intasend
   end
 
+  defp put_return_to_in_session(conn, _opts) do
+    case conn.params["return_to"] do
+      nil -> conn
+      return_to -> Plug.Conn.put_session(conn, :user_return_to, return_to)
+    end
+  end
 end

@@ -36,7 +36,7 @@ defmodule ZidolinkWeb.UserLive.Registration do
           <.input
             field={@form[:phone]}
             type="text"
-            label="Phone (Safaricom, e.g. 2547XXXXXXXX)"
+            label="Phone (Safaricom only, e.g. 2547XXXXXXXX)"
             autocomplete="tel"
             spellcheck="false"
             required

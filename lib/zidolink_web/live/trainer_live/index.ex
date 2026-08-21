@@ -66,7 +66,7 @@ defmodule ZidolinkWeb.TrainerLive.Index do
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
-          <div :for={trainer <- @trainers} class="border rounded-lg p-4">
+          <.link :for={trainer <- @trainers} navigate={~p"/trainers/#{trainer.id}"} class="border rounded-lg p-4 block hover:shadow-md transition-shadow">
             <img
               :if={trainer.photo_url}
               src={trainer.photo_url}
@@ -81,7 +81,7 @@ defmodule ZidolinkWeb.TrainerLive.Index do
               <.icon name="hero-map-pin" class="size-4" />
               {trainer.location_address}
             </p>
-          </div>
+          </.link>
         </div>
 
         <div :if={@has_more} class="mt-6 text-center">

@@ -29,6 +29,10 @@ defmodule Zidolink.Profiles do
     get_trainer_profile_by_user_id(user_id) || %Zidolink.Profiles.TrainerProfile{user_id: user_id}
   end
 
+  def get_trainer_profile(id) do
+    Repo.get(Zidolink.Profiles.TrainerProfile, id)
+  end
+
   def list_completed_trainer_profiles do
     Repo.all(
       from p in Zidolink.Profiles.TrainerProfile,
