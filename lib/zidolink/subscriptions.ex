@@ -95,4 +95,14 @@ defmodule Zidolink.Subscriptions do
     )
   end
 
+  def list_actionable_requests_for_trainer(trainer_id) do
+    Repo.all(
+      from s in Subscription,
+        where:
+          s.trainer_id == ^trainer_id and s.kind in ["weekly", "monthly"] and
+            s.status in ["pending_quote", "declined"],
+        order_by: [asc: s.inserted_at]
+    )
+    |> Repo.preload(:client)
+  end
 end

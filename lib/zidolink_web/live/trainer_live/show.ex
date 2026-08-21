@@ -196,7 +196,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
         {:noreply, socket}
 
       DateTime.compare(DateTime.utc_now(), socket.assigns.poll_deadline) == :gt ->
-        {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "declined"})
+        {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "expired"})
         {:noreply, assign(socket, booking: updated, poll_timed_out: true)}
 
       true ->
@@ -206,7 +206,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
             {:noreply, assign(socket, booking: updated)}
 
           {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
-            {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "declined"})
+            {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "expired"})
             {:noreply, assign(socket, booking: updated, poll_timed_out: true)}
 
           _ ->
