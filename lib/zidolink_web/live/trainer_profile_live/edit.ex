@@ -17,6 +17,16 @@ defmodule ZidolinkWeb.TrainerProfileLive.Edit do
         <.form for={@form} id="trainer_profile_form" phx-submit="save" phx-change="validate">
           <.input field={@form[:display_name]} type="text" label="Display name" />
           <.input field={@form[:bio]} type="textarea" label="Bio" required />
+
+          <.input
+            field={@form[:session_price]}
+            type="number"
+            label="One-time session price (KES)"
+          />
+          <p class="text-sm text-base-content/60 -mt-2 mb-3">
+            This is only for a single, one-time session. Weekly/monthly pricing is set individually per client after they request a subscription.
+          </p>
+
           <input
             type="text"
             name="trainer_profile[specialties_text]"
@@ -220,8 +230,8 @@ defmodule ZidolinkWeb.TrainerProfileLive.Edit do
   defp normalize_specialties_text(str) do
     str |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
   end
+
   defp photo_error_to_string(:too_large), do: "Photo is too large (max 8MB)"
   defp photo_error_to_string(:not_accepted), do: "Only JPG and PNG images are accepted"
   defp photo_error_to_string(:too_many_files), do: "Only one photo allowed"
-
 end
