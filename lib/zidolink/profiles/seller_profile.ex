@@ -11,6 +11,7 @@ defmodule Zidolink.Profiles.SellerProfile do
     field :categories, {:array, :string}, default: []
     field :location_lat, :float
     field :location_lng, :float
+    field :location, Geo.PostGIS.Geometry
     field :photo_url, :string
     field :location_address, :string
     field :profile_completed, :boolean, default: false
@@ -38,5 +39,17 @@ defmodule Zidolink.Profiles.SellerProfile do
     |> validate_subset(:categories, @categories)
     |> foreign_key_constraint(:user_id)
     |> unique_constraint(:user_id)
+    |> put_geo_point()
+  end
+
+  defp put_geo_point(changeset) do
+    lat = get_field(changeset, :location_lat)
+    lng = get_field(changeset, :location_lng)
+
+    if lat && lng do
+      put_change(changeset, :location, %Geo.Point{coordinates: {lng, lat}, srid: 4326})
+    else
+      changeset
+    end
   end
 end

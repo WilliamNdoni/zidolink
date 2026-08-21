@@ -138,5 +138,57 @@ defmodule Zidolink.Profiles do
     )
   end
 
+  @sellers_per_page 12
+
+  def search_seller_profiles(query, page \\ 1)
+
+  def search_seller_profiles(query, page) when query in [nil, ""] do
+    offset = (page - 1) * @sellers_per_page
+
+    Repo.all(
+      from p in Zidolink.Profiles.SellerProfile,
+        where: p.profile_completed == true,
+        order_by: [desc: p.inserted_at],
+        limit: ^@sellers_per_page,
+        offset: ^offset
+    )
+  end
+
+  def search_seller_profiles(query, page) do
+    pattern = "%#{query}%"
+    offset = (page - 1) * @sellers_per_page
+
+    Repo.all(
+      from p in Zidolink.Profiles.SellerProfile,
+        where:
+          p.profile_completed == true and
+            (ilike(p.shop_name, ^pattern) or
+               ilike(p.bio, ^pattern) or
+               fragment("EXISTS (SELECT 1 FROM unnest(?) AS c WHERE c ILIKE ?)", p.categories, ^pattern)),
+        order_by: [desc: p.inserted_at],
+        limit: ^@sellers_per_page,
+        offset: ^offset
+    )
+  end
+
+  def nearby_seller_profiles(lat, lng, radius_km, page \\ 1) do
+    offset = (page - 1) * @sellers_per_page
+    point = %Geo.Point{coordinates: {lng, lat}, srid: 4326}
+
+    Repo.all(
+      from p in Zidolink.Profiles.SellerProfile,
+        where: p.profile_completed == true and not is_nil(p.location),
+        where:
+          fragment(
+            "ST_DWithin(?::geography, ?::geography, ?)",
+            p.location,
+            ^point,
+            ^(radius_km * 1000)
+          ),
+        order_by: fragment("ST_Distance(?::geography, ?::geography)", p.location, ^point),
+        limit: ^@sellers_per_page,
+        offset: ^offset
+    )
+  end
 
 end
