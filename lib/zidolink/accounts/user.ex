@@ -38,7 +38,7 @@ defmodule Zidolink.Accounts.User do
     |> cast(attrs, [:phone])
     |> validate_required([:phone])
     |> validate_format(:phone, ~r/^2547\d{8}$/,
-      message: "must be a valid Safaricom number in the format 2547XXXXXXXX"
+      message: "must be a valid M-Pesa number in the format 2547XXXXXXXX"
     )
     |> maybe_validate_unique_phone(opts)
   end
@@ -58,7 +58,7 @@ defmodule Zidolink.Accounts.User do
       changeset
       |> validate_required([:email])
       |> validate_format(:email, ~r/^[^@,;\s]+@[^@,;\s]+$/,
-        message: "must have the @ sign and no spaces"
+        message: "must be a valid email address"
       )
       |> validate_length(:email, max: 160)
 
@@ -89,7 +89,7 @@ defmodule Zidolink.Accounts.User do
     |> cast(attrs, [:phone, :join_as])
     |> validate_required([:phone, :join_as])
     |> validate_format(:phone, ~r/^2547\d{8}$/,
-      message: "must be a valid Safaricom number in the format 2547XXXXXXXX"
+      message: "must be a valid M-Pesa number in the format 2547XXXXXXXX"
     )
     |> unsafe_validate_unique(:phone, Zidolink.Repo)
     |> unique_constraint(:phone)

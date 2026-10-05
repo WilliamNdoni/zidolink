@@ -16,7 +16,7 @@ defmodule ZidolinkWeb.UserLive.Settings do
         </.header>
       </div>
 
-      <.form for={@email_form} id="email_form" phx-submit="update_email" phx-change="validate_email">
+      <.form for={@email_form} id="email_form" phx-submit="update_email" phx-change="validate_email" novalidate>
         <.input
           field={@email_form[:email]}
           type="email"
@@ -30,11 +30,11 @@ defmodule ZidolinkWeb.UserLive.Settings do
 
       <div class="divider" />
 
-      <.form for={@phone_form} id="phone_form" phx-submit="update_phone" phx-change="validate_phone">
+      <.form for={@phone_form} id="phone_form" phx-submit="update_phone" phx-change="validate_phone" novalidate>
         <.input
           field={@phone_form[:phone]}
           type="text"
-          label="Phone (Safaricom, e.g. 2547XXXXXXXX)"
+          label="Phone (M-Pesa number only, e.g. 2547XXXXXXXX)"
           autocomplete="tel"
           spellcheck="false"
           required
@@ -50,6 +50,7 @@ defmodule ZidolinkWeb.UserLive.Settings do
         action={~p"/users/update-password"}
         method="post"
         phx-change="validate_password"
+        novalidate
         phx-submit="update_password"
         phx-trigger-action={@trigger_submit}
       >

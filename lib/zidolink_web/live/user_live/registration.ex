@@ -22,7 +22,7 @@ defmodule ZidolinkWeb.UserLive.Registration do
           </.header>
         </div>
 
-        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate">
+        <.form for={@form} id="registration_form" phx-submit="save" phx-change="validate" novalidate>
           <.input
             field={@form[:email]}
             type="email"
@@ -36,7 +36,7 @@ defmodule ZidolinkWeb.UserLive.Registration do
           <.input
             field={@form[:phone]}
             type="text"
-            label="Phone (Safaricom only, e.g. 2547XXXXXXXX)"
+            label="Phone (M-Pesa number only, e.g. 2547XXXXXXXX)"
             autocomplete="tel"
             spellcheck="false"
             required
