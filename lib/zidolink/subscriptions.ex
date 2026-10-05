@@ -41,7 +41,14 @@ defmodule Zidolink.Subscriptions do
   end
 
   def request_subscription(client_id, trainer_id, kind) do
-    create_subscription(%{client_id: client_id, trainer_id: trainer_id, kind: kind, status: "pending_quote"})
+    case create_subscription(%{client_id: client_id, trainer_id: trainer_id, kind: kind, status: "pending_quote"}) do
+      {:ok, subscription} ->
+        broadcast_update(subscription)
+        {:ok, subscription}
+
+      error ->
+        error
+    end
   end
 
   def list_pending_quotes_for_trainer(trainer_id) do
@@ -56,15 +63,29 @@ defmodule Zidolink.Subscriptions do
   def set_quote(%Subscription{} = subscription, price) do
     history = subscription.quote_history ++ [%{"price" => price, "set_at" => DateTime.utc_now() |> DateTime.to_iso8601()}]
 
-    update_subscription(subscription, %{
-      price: price,
-      status: "awaiting_payment",
-      quote_history: history
-    })
+    case update_subscription(subscription, %{
+           price: price,
+           status: "awaiting_payment",
+           quote_history: history
+         }) do
+      {:ok, updated} ->
+        broadcast_update(updated)
+        {:ok, updated}
+
+      error ->
+        error
+    end
   end
 
   def decline_quote(%Subscription{} = subscription, reason) do
-    update_subscription(subscription, %{status: "declined", decline_reason: reason})
+    case update_subscription(subscription, %{status: "declined", decline_reason: reason}) do
+      {:ok, updated} ->
+        broadcast_update(updated)
+        {:ok, updated}
+
+      error ->
+        error
+    end
   end
 
   def book_one_time_session(client_id, trainer_id, price) do
@@ -104,5 +125,23 @@ defmodule Zidolink.Subscriptions do
         order_by: [asc: s.inserted_at]
     )
     |> Repo.preload(:client)
+  end
+
+  def subscription_topic(client_id, trainer_id), do: "subscription:client:#{client_id}:trainer:#{trainer_id}"
+
+  def trainer_subscriptions_topic(trainer_id), do: "trainer_subscriptions:#{trainer_id}"
+
+  defp broadcast_update(subscription) do
+    Phoenix.PubSub.broadcast(
+      Zidolink.PubSub,
+      subscription_topic(subscription.client_id, subscription.trainer_id),
+      {:subscription_updated, subscription}
+    )
+
+    Phoenix.PubSub.broadcast(
+      Zidolink.PubSub,
+      trainer_subscriptions_topic(subscription.trainer_id),
+      {:subscription_updated, subscription}
+    )
   end
 end

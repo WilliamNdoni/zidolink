@@ -4,14 +4,6 @@ defmodule ZidolinkWeb.DashboardLive.Index do
   alias Zidolink.Profiles
 
   @impl true
-  def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
-    trainer_profile = "trainer" in user.roles && Profiles.get_trainer_profile_by_user_id(user.id)
-    seller_profile = "seller" in user.roles && Profiles.get_seller_profile_by_user_id(user.id)
-    {:ok, assign(socket, trainer_profile: trainer_profile, seller_profile: seller_profile)}
-  end
-
-  @impl true
   def render(assigns) do
     ~H"""
     <Layouts.app flash={@flash} current_scope={@current_scope}>
@@ -31,12 +23,15 @@ defmodule ZidolinkWeb.DashboardLive.Index do
             <p class="text-sm text-base-content/80 mt-1">
               Your profile is set up as {@trainer_profile.display_name || "your trainer profile"}.
             </p>
-            <.link href={~p"/trainer/profile"} class="link text-sm">Edit profile &rarr;</.link>
+            <div class="flex gap-2 mt-2">
+              <.link href={~p"/trainer/profile"} class="btn btn-primary btn-sm">Edit profile</.link>
+              <.link href={~p"/trainer/subscriptions"} class="btn btn-primary btn-sm">Subscription requests</.link>
+            </div>
           <% else %>
             <p class="text-sm text-base-content/80 mt-1">
               Finish setting up your public profile so clients can find you.
             </p>
-            <.link href={~p"/trainer/profile"} class="link text-sm">Set up profile &rarr;</.link>
+            <.link href={~p"/trainer/profile"} class="btn btn-primary btn-sm mt-2">Set up profile</.link>
           <% end %>
         </div>
 
@@ -46,12 +41,12 @@ defmodule ZidolinkWeb.DashboardLive.Index do
             <p class="text-sm text-base-content/80 mt-1">
               Your shop is set up as {@seller_profile.shop_name}.
             </p>
-            <.link href={~p"/seller/profile"} class="link text-sm">Edit profile &rarr;</.link>
+            <.link href={~p"/seller/profile"} class="btn btn-primary btn-sm mt-2">Edit profile</.link>
           <% else %>
             <p class="text-sm text-base-content/80 mt-1">
               Finish setting up your shop profile so buyers can find you.
             </p>
-            <.link href={~p"/seller/profile"} class="link text-sm">Set up profile &rarr;</.link>
+            <.link href={~p"/seller/profile"} class="btn btn-primary btn-sm mt-2">Set up profile</.link>
           <% end %>
         </div>
 
@@ -61,5 +56,13 @@ defmodule ZidolinkWeb.DashboardLive.Index do
       </div>
     </Layouts.app>
     """
+  end
+
+  @impl true
+  def mount(_params, _session, socket) do
+    user = socket.assigns.current_scope.user
+    trainer_profile = "trainer" in user.roles && Profiles.get_trainer_profile_by_user_id(user.id)
+    seller_profile = "seller" in user.roles && Profiles.get_seller_profile_by_user_id(user.id)
+    {:ok, assign(socket, trainer_profile: trainer_profile, seller_profile: seller_profile)}
   end
 end

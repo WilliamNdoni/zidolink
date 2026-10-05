@@ -46,6 +46,11 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     user = socket.assigns.current_scope.user
+
+    if connected?(socket) do
+      Phoenix.PubSub.subscribe(Zidolink.PubSub, Subscriptions.trainer_subscriptions_topic(user.id))
+    end
+
     {:ok, assign(socket, requests: Subscriptions.list_actionable_requests_for_trainer(user.id))}
   end
 
@@ -65,4 +70,11 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
         {:noreply, put_flash(socket, :error, "Couldn't send the quote — please try again.")}
     end
   end
+
+  @impl true
+  def handle_info({:subscription_updated, _subscription}, socket) do
+    user = socket.assigns.current_scope.user
+    {:noreply, assign(socket, requests: Subscriptions.list_actionable_requests_for_trainer(user.id))}
+  end
+
 end

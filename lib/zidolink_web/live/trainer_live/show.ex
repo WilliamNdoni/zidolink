@@ -113,7 +113,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
                     <.button phx-click="pay_subscription" class="btn btn-primary btn-sm">
                       Pay KES {@subscription_request.price + @platform_markup_fee}
                     </.button>
-                    <.button phx-click="show_decline_form" class="btn btn-outline btn-sm">
+                    <.button phx-click="show_decline_form" class="btn btn-outline btn-error btn-sm">
                       Decline
                     </.button>
                   </div>
@@ -135,17 +135,9 @@ defmodule ZidolinkWeb.TrainerLive.Show do
                 <% end %>
               </div>
             <% @subscription_request && @subscription_request.status == "declined" -> %>
-              <p class="text-sm text-base-content/80 mb-2">
-                Your last request wasn't taken forward<%= if @subscription_request.decline_reason, do: " (#{@subscription_request.decline_reason})" %>. You can request again.
+              <p class="text-sm text-base-content/80">
+                You declined {@trainer.display_name}'s last quote<%= if @subscription_request.decline_reason, do: " (#{@subscription_request.decline_reason})" %>. They may send you a new one.
               </p>
-              <div class="flex gap-2">
-                <.button phx-click="request_subscription" phx-value-kind="weekly" class="btn btn-primary btn-sm">
-                  Request weekly
-                </.button>
-                <.button phx-click="request_subscription" phx-value-kind="monthly" class="btn btn-primary btn-sm">
-                  Request monthly
-                </.button>
-              </div>
             <% @subscription_request && @subscription_request.status == "active" -> %>
               <p class="text-sm text-success">You have an active {@subscription_request.kind} subscription.</p>
             <% true -> %>
@@ -185,6 +177,10 @@ defmodule ZidolinkWeb.TrainerLive.Show do
       else
         {nil, nil, nil}
       end
+
+    if user && connected?(socket) do
+      Phoenix.PubSub.subscribe(Zidolink.PubSub, Subscriptions.subscription_topic(user.id, trainer.user_id))
+    end
 
     {:ok,
      assign(socket,
@@ -293,6 +289,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
         case Intasend.check_status(booking.invoice_id) do
           {:ok, %{"invoice" => %{"state" => "COMPLETE"}}} ->
             {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "active"})
+            Phoenix.PubSub.broadcast(Zidolink.PubSub, Subscriptions.trainer_subscriptions_topic(updated.trainer_id), {:subscription_updated, updated})
             {:noreply, assign(socket, booking: updated)}
 
           {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
@@ -304,6 +301,10 @@ defmodule ZidolinkWeb.TrainerLive.Show do
             {:noreply, socket}
         end
     end
+  end
+
+  def handle_info({:subscription_updated, updated}, socket) do
+    {:noreply, assign(socket, subscription_request: updated, show_decline_form: false)}
   end
 
   def handle_info(:poll_subscription_status, socket) do
@@ -330,6 +331,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
                 ends_at: ends_at
               })
 
+            Phoenix.PubSub.broadcast(Zidolink.PubSub, Subscriptions.trainer_subscriptions_topic(updated.trainer_id), {:subscription_updated, updated})
             {:noreply, assign(socket, subscription_request: updated, sub_pending_payment: false)}
 
           {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
