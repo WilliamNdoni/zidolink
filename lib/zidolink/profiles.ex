@@ -100,6 +100,10 @@ defmodule Zidolink.Profiles do
     Repo.get_by(ClientProfile, user_id: user_id)
   end
 
+  def get_or_build_client_profile(user_id) do
+    get_client_profile_by_user_id(user_id) || %Zidolink.Profiles.ClientProfile{user_id: user_id}
+  end
+
   def create_client_profile(attrs) do
     %ClientProfile{}
     |> ClientProfile.changeset(attrs)

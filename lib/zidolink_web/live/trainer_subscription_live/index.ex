@@ -16,7 +16,10 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
 
         <div :for={request <- @requests} class="mt-4 border rounded-lg p-4">
           <p class="font-semibold">
-            {request.client.email} &mdash; {request.kind} subscription
+            {client_label(request.client)} &mdash; {request.kind} subscription
+          </p>
+          <p :if={client_phone(request.client)} class="text-sm text-base-content/60">
+            {client_phone(request.client)}
           </p>
           <p class="text-sm text-base-content/60">
             Requested {Calendar.strftime(request.inserted_at, "%d %b %Y, %H:%M")}
@@ -75,6 +78,23 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
   def handle_info({:subscription_updated, _subscription}, socket) do
     user = socket.assigns.current_scope.user
     {:noreply, assign(socket, requests: Subscriptions.list_actionable_requests_for_trainer(user.id))}
+  end
+
+  defp client_label(client) do
+    profile = Zidolink.Profiles.get_client_profile_by_user_id(client.id)
+
+    case profile && profile.display_name do
+      name when name not in [nil, ""] -> "#{name} (#{client.email})"
+      _ -> client.email
+    end
+  end
+
+  defp client_phone(client) do
+    profile = Zidolink.Profiles.get_client_profile_by_user_id(client.id)
+
+    if profile && profile.phone_visible_to_trainers do
+      client.phone
+    end
   end
 
 end

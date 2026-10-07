@@ -5,6 +5,8 @@ defmodule Zidolink.Profiles.ClientProfile do
   schema "client_profiles" do
     field :location_lat, :float
     field :location_lng, :float
+    field :display_name, :string
+    field :phone_visible_to_trainers, :boolean, default: true
 
     belongs_to :user, Zidolink.Accounts.User
 
@@ -13,7 +15,7 @@ defmodule Zidolink.Profiles.ClientProfile do
 
   def changeset(client_profile, attrs) do
     client_profile
-    |> cast(attrs, [:location_lat, :location_lng, :user_id])
+    |> cast(attrs, [:location_lat, :location_lng, :display_name, :phone_visible_to_trainers, :user_id])
     |> validate_required([:user_id])
     |> foreign_key_constraint(:user_id)
     |> unique_constraint(:user_id)

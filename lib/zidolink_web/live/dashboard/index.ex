@@ -15,6 +15,7 @@ defmodule ZidolinkWeb.DashboardLive.Index do
           <p class="text-sm text-base-content/80 mt-1">
             Browsing and subscribing to trainers is coming soon — check back here once it's live.
           </p>
+          <.link href={~p"/client/profile"} class="btn btn-primary btn-sm mt-2">Edit your profile</.link>
         </div>
 
         <div :if={"trainer" in @current_scope.user.roles} class="mt-6 border rounded-lg p-4">
