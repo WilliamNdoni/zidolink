@@ -2,6 +2,7 @@ defmodule ZidolinkWeb.WebhookController do
   use ZidolinkWeb, :controller
 
   alias Zidolink.RoleApplications
+  alias Zidolink.Subscriptions
 
   def intasend(conn, params) do
     expected_challenge = System.get_env("INTASEND_WEBHOOK_CHALLENGE")
@@ -19,7 +20,7 @@ defmodule ZidolinkWeb.WebhookController do
   defp handle_event(%{"invoice_id" => invoice_id, "state" => state}) do
     case RoleApplications.get_by_invoice_id(invoice_id) do
       nil ->
-        :ok
+        handle_subscription_event(invoice_id, state)
 
       application ->
         case state do
@@ -31,4 +32,16 @@ defmodule ZidolinkWeb.WebhookController do
   end
 
   defp handle_event(_params), do: :ok
+
+  defp handle_subscription_event(invoice_id, state) do
+    case Subscriptions.get_by_invoice_id(invoice_id) do
+      nil -> :ok
+      subscription ->
+        case state do
+          "COMPLETE" -> Subscriptions.mark_payment_complete(subscription)
+          "FAILED" -> Subscriptions.mark_payment_failed(subscription)
+          _ -> :ok
+        end
+    end
+  end
 end

@@ -63,7 +63,18 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
     request = Enum.find(socket.assigns.requests, &(&1.id == String.to_integer(id)))
 
     case Subscriptions.set_quote(request, String.to_integer(price)) do
-      {:ok, _updated} ->
+      {:ok, updated} ->
+        trainer_profile = Zidolink.Profiles.get_trainer_profile_by_user_id(user.id)
+        settings = Zidolink.PlatformSettings.get_settings()
+
+        Zidolink.Notifier.deliver_quote_notification(
+          request.client.email,
+          trainer_profile.display_name || user.email,
+          updated.price + settings.platform_markup_fee,
+          updated.kind,
+          url(~p"/trainers/#{trainer_profile.id}")
+        )
+
         {:noreply,
          socket
          |> put_flash(:info, "Quote sent to #{request.client.email}.")

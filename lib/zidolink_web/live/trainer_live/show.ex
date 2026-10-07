@@ -38,7 +38,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
 
         <div class="mt-8 border rounded-lg p-4">
           <p class="text-sm text-base-content/60 mb-3">
-            Payments are currently supported via M-Pesa only.
+            Payments are currently supported via M-Pesa (Safaricom) only.
           </p>
 
           <%= cond do %>
@@ -49,6 +49,10 @@ defmodule ZidolinkWeb.TrainerLive.Show do
               >
                 Book a session or subscribe
               </.link>
+              <p class="text-sm text-center mt-2">
+                Already have an account?
+                <.link href={~p"/users/log-in?return_to=/trainers/#{@trainer.id}"} class="link">Log in</.link>
+              </p>
             <% is_nil(@trainer.session_price) -> %>
               <p class="text-sm text-base-content/60">
                 This trainer isn't currently offering one-time sessions.
@@ -167,6 +171,13 @@ defmodule ZidolinkWeb.TrainerLive.Show do
         booking = Subscriptions.get_latest_one_time_booking(user.id, trainer.user_id)
         sub_request = Subscriptions.get_latest_subscription_request(user.id, trainer.user_id)
 
+        if connected?(socket) do
+          Phoenix.PubSub.subscribe(
+            Zidolink.PubSub,
+            Subscriptions.subscription_topic(user.id, trainer.user_id)
+          )
+        end
+
         deadline =
           if booking && booking.status == "awaiting_payment" do
             if connected?(socket), do: schedule_poll(:poll_booking_status)
@@ -177,10 +188,6 @@ defmodule ZidolinkWeb.TrainerLive.Show do
       else
         {nil, nil, nil}
       end
-
-    if user && connected?(socket) do
-      Phoenix.PubSub.subscribe(Zidolink.PubSub, Subscriptions.subscription_topic(user.id, trainer.user_id))
-    end
 
     {:ok,
      assign(socket,
@@ -224,6 +231,15 @@ defmodule ZidolinkWeb.TrainerLive.Show do
 
     case Subscriptions.request_subscription(user.id, trainer.user_id, kind) do
       {:ok, request} ->
+        trainer_user = Zidolink.Accounts.get_user!(trainer.user_id)
+
+        Zidolink.Notifier.deliver_subscription_request(
+          trainer_user.email,
+          user.email,
+          kind,
+          url(~p"/trainer/subscriptions")
+        )
+
         {:noreply,
          socket
          |> put_flash(:info, "Your #{kind} subscription request was sent.")
@@ -282,18 +298,16 @@ defmodule ZidolinkWeb.TrainerLive.Show do
         {:noreply, socket}
 
       DateTime.compare(DateTime.utc_now(), socket.assigns.poll_deadline) == :gt ->
-        {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "expired"})
-        {:noreply, assign(socket, booking: updated, poll_timed_out: true)}
+        {:noreply, assign(socket, poll_timed_out: true)}
 
       true ->
         case Intasend.check_status(booking.invoice_id) do
           {:ok, %{"invoice" => %{"state" => "COMPLETE"}}} ->
-            {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "active"})
-            Phoenix.PubSub.broadcast(Zidolink.PubSub, Subscriptions.trainer_subscriptions_topic(updated.trainer_id), {:subscription_updated, updated})
+            {:ok, updated} = Subscriptions.mark_payment_complete(booking)
             {:noreply, assign(socket, booking: updated)}
 
           {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
-            {:ok, updated} = Subscriptions.update_subscription(booking, %{status: "expired"})
+            {:ok, updated} = Subscriptions.mark_payment_failed(booking)
             {:noreply, assign(socket, booking: updated, poll_timed_out: true)}
 
           _ ->
@@ -301,10 +315,6 @@ defmodule ZidolinkWeb.TrainerLive.Show do
             {:noreply, socket}
         end
     end
-  end
-
-  def handle_info({:subscription_updated, updated}, socket) do
-    {:noreply, assign(socket, subscription_request: updated, show_decline_form: false)}
   end
 
   def handle_info(:poll_subscription_status, socket) do
@@ -320,18 +330,7 @@ defmodule ZidolinkWeb.TrainerLive.Show do
       true ->
         case Intasend.check_status(request.invoice_id) do
           {:ok, %{"invoice" => %{"state" => "COMPLETE"}}} ->
-            {days, _} = period_for_kind(request.kind)
-            starts_at = DateTime.utc_now() |> DateTime.truncate(:second)
-            ends_at = DateTime.add(starts_at, days, :day)
-
-            {:ok, updated} =
-              Subscriptions.update_subscription(request, %{
-                status: "active",
-                starts_at: starts_at,
-                ends_at: ends_at
-              })
-
-            Phoenix.PubSub.broadcast(Zidolink.PubSub, Subscriptions.trainer_subscriptions_topic(updated.trainer_id), {:subscription_updated, updated})
+            {:ok, updated} = Subscriptions.mark_payment_complete(request)
             {:noreply, assign(socket, subscription_request: updated, sub_pending_payment: false)}
 
           {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
@@ -342,6 +341,10 @@ defmodule ZidolinkWeb.TrainerLive.Show do
             {:noreply, socket}
         end
     end
+  end
+
+  def handle_info({:subscription_updated, updated}, socket) do
+    {:noreply, assign(socket, subscription_request: updated, show_decline_form: false)}
   end
 
   defp trigger_booking_payment(socket, booking, user) do
@@ -381,10 +384,6 @@ defmodule ZidolinkWeb.TrainerLive.Show do
         put_flash(socket, :error, "We couldn't start the payment request — please try again.")
     end
   end
-
-  defp period_for_kind("weekly"), do: {7, :day}
-  defp period_for_kind("monthly"), do: {30, :day}
-  defp period_for_kind(_), do: {30, :day}
 
   defp schedule_poll(message) do
     Process.send_after(self(), message, @poll_interval)

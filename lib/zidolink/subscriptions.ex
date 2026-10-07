@@ -144,4 +144,40 @@ defmodule Zidolink.Subscriptions do
       {:subscription_updated, subscription}
     )
   end
+
+  def get_by_invoice_id(invoice_id) do
+    Repo.get_by(Subscription, invoice_id: invoice_id)
+  end
+
+  def mark_payment_complete(%Subscription{kind: "one_time"} = subscription) do
+    case update_subscription(subscription, %{status: "active"}) do
+      {:ok, updated} -> broadcast_update(updated); {:ok, updated}
+      error -> error
+    end
+  end
+
+  def mark_payment_complete(%Subscription{} = subscription) do
+    {days, _} = period_for_kind(subscription.kind)
+    starts_at = DateTime.utc_now() |> DateTime.truncate(:second)
+    ends_at = DateTime.add(starts_at, days, :day)
+
+    case update_subscription(subscription, %{status: "active", starts_at: starts_at, ends_at: ends_at}) do
+      {:ok, updated} -> broadcast_update(updated); {:ok, updated}
+      error -> error
+    end
+  end
+
+  def mark_payment_failed(%Subscription{kind: "one_time"} = subscription) do
+    case update_subscription(subscription, %{status: "expired"}) do
+      {:ok, updated} -> broadcast_update(updated); {:ok, updated}
+      error -> error
+    end
+  end
+
+  def mark_payment_failed(_), do: :ok
+
+  defp period_for_kind("weekly"), do: {7, :day}
+  defp period_for_kind("monthly"), do: {30, :day}
+  defp period_for_kind(_), do: {30, :day}
+
 end
