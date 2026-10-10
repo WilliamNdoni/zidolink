@@ -139,11 +139,13 @@ defmodule ZidolinkWeb.TrainerLive.Show do
                 <% end %>
               </div>
             <% @subscription_request && @subscription_request.status == "declined" -> %>
-              <p class="text-sm text-base-content/80">
+              <p class="text-sm text-base-content/80 mb-2">
                 You declined {@trainer.display_name}'s last quote<%= if @subscription_request.decline_reason, do: " (#{@subscription_request.decline_reason})" %>. They may send you a new one.
               </p>
+              <.link href={~p"/client/requests"} class="btn btn-primary btn-sm">Back to My Requests</.link>
             <% @subscription_request && @subscription_request.status == "active" -> %>
-              <p class="text-sm text-success">You have an active {@subscription_request.kind} subscription.</p>
+              <p class="text-sm text-success mb-2">You have an active {@subscription_request.kind} subscription.</p>
+              <.link href={~p"/dashboard"} class="btn btn-primary btn-sm">Back to Dashboard</.link>
             <% true -> %>
               <div class="flex gap-2">
                 <.button phx-click="request_subscription" phx-value-kind="weekly" class="btn btn-primary btn-sm">

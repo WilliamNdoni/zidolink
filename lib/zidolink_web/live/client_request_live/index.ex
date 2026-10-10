@@ -1,7 +1,7 @@
 defmodule ZidolinkWeb.ClientRequestLive.Index do
   use ZidolinkWeb, :live_view
 
-  alias Zidolink.{Subscriptions, Profiles}
+  alias Zidolink.{Subscriptions, Profiles, Avatars}
 
   @impl true
   def render(assigns) do
@@ -19,13 +19,46 @@ defmodule ZidolinkWeb.ClientRequestLive.Index do
           navigate={~p"/trainers/#{item.trainer_profile_id}"}
           class={"mt-4 border rounded-lg p-4 block hover:shadow-md transition-shadow border-l-4 #{border_class(item.sub.status)}"}
         >
-          <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
-            <div>
-              <p class="font-semibold">{item.trainer_label}</p>
-              <p class="text-sm text-base-content/60">{String.capitalize(item.sub.kind)} subscription</p>
-              <p :if={item.sub.price} class="text-sm text-base-content/60">KES {item.sub.price}</p>
+          <div class="flex gap-3 items-start">
+            <img
+              :if={item.photo_url}
+              src={item.photo_url}
+              class="flex-none size-12 rounded-full object-cover"
+            />
+            <div
+              :if={!item.photo_url}
+              class="flex-none size-12 rounded-full flex items-center justify-center font-bold text-sm"
+              style={"background-color: #{item.avatar_bg}; color: #{item.avatar_fg}"}
+            >
+              {item.initials}
             </div>
-            <span class={badge_class(item.sub.status)}>{status_label(item.sub.status)}</span>
+
+            <div class="flex-1 min-w-0">
+              <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2">
+                <div>
+                  <p class="font-semibold">{item.trainer_label}</p>
+                  <p class="text-sm text-base-content/60">{String.capitalize(item.sub.kind)} subscription</p>
+                  <p :if={item.location_address} class="text-sm text-base-content/60 flex items-center gap-1">
+                    <.icon name="hero-map-pin" class="size-3.5" /> {item.location_address}
+                  </p>
+                </div>
+                <span class={badge_class(item.sub.status)}>{status_label(item.sub.status)}</span>
+              </div>
+
+              <div :if={item.specialties != []} class="flex flex-wrap gap-1 mt-2">
+                <span :for={s <- item.specialties} class="badge badge-outline badge-sm">{s}</span>
+              </div>
+
+              <div class="mt-2 text-sm text-base-content/80">
+                <p :if={item.sub.price}>Quoted KES {item.sub.price}</p>
+                <p :if={item.sub.status == "declined" && item.sub.decline_reason}>
+                  You declined ({item.sub.decline_reason})
+                </p>
+                <p class="text-xs text-base-content/60">
+                  Updated {Calendar.strftime(item.sub.updated_at, "%d %b %Y")}
+                </p>
+              </div>
+            </div>
           </div>
         </.link>
       </div>
@@ -60,11 +93,19 @@ defmodule ZidolinkWeb.ClientRequestLive.Index do
     Subscriptions.list_requests_for_client(client_id)
     |> Enum.map(fn sub ->
       trainer_profile = Profiles.get_trainer_profile_by_user_id(sub.trainer_id)
+      label = Avatars.label(trainer_profile && trainer_profile.display_name, sub.trainer.email)
+      {bg, fg} = Avatars.color(label)
 
       %{
         sub: sub,
-        trainer_label: (trainer_profile && trainer_profile.display_name) || sub.trainer.email,
-        trainer_profile_id: trainer_profile && trainer_profile.id
+        trainer_label: label,
+        trainer_profile_id: trainer_profile && trainer_profile.id,
+        photo_url: trainer_profile && trainer_profile.photo_url,
+        location_address: trainer_profile && trainer_profile.location_address,
+        specialties: (trainer_profile && trainer_profile.specialties) || [],
+        initials: Avatars.initials(trainer_profile && trainer_profile.display_name, sub.trainer.email),
+        avatar_bg: bg,
+        avatar_fg: fg
       }
     end)
     |> Enum.reject(&is_nil(&1.trainer_profile_id))

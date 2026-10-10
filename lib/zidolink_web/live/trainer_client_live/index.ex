@@ -1,15 +1,7 @@
 defmodule ZidolinkWeb.TrainerClientLive.Index do
   use ZidolinkWeb, :live_view
 
-  alias Zidolink.{Subscriptions, Profiles}
-
-  @avatar_colors [
-    {"#FF6F5E", "#FFFFFF"},
-    {"#0E7C5D", "#FFFFFF"},
-    {"#FFC93C", "#241B2F"},
-    {"#8B7AB8", "#FFFFFF"},
-    {"#4A90D9", "#FFFFFF"}
-  ]
+  alias Zidolink.{Subscriptions, Profiles, Avatars}
 
   @impl true
   def render(assigns) do
@@ -103,14 +95,14 @@ defmodule ZidolinkWeb.TrainerClientLive.Index do
     Subscriptions.list_clients_for_trainer(trainer_id)
     |> Enum.map(fn {sub, category} ->
       profile = Profiles.get_client_profile_by_user_id(sub.client_id)
-      label = resolve_label(profile, sub.client)
-      {bg, fg} = avatar_color(label)
+      label = Avatars.label(profile && profile.display_name, sub.client.email)
+      {bg, fg} = Avatars.color(label)
 
       %{
         sub: sub,
         category: category,
         label: label,
-        initials: initials(label),
+        initials: Avatars.initials(profile && profile.display_name, sub.client.email),
         avatar_bg: bg,
         avatar_fg: fg,
         phone: (profile && profile.phone_visible_to_trainers && sub.client.phone) || nil
@@ -138,27 +130,6 @@ defmodule ZidolinkWeb.TrainerClientLive.Index do
       end)
 
     assign(socket, counts: counts, filtered: filtered)
-  end
-
-  defp resolve_label(profile, client) do
-    case profile && profile.display_name do
-      name when name not in [nil, ""] -> name
-      _ -> client.email
-    end
-  end
-
-  defp initials(label) do
-    label
-    |> String.split(~r/[\s@.]+/, trim: true)
-    |> Enum.take(2)
-    |> Enum.map(&String.first/1)
-    |> Enum.join()
-    |> String.upcase()
-  end
-
-  defp avatar_color(label) do
-    index = :erlang.phash2(label, length(@avatar_colors))
-    Enum.at(@avatar_colors, index)
   end
 
   defp tab_class(current, key) when current == key, do: "btn btn-primary btn-sm"

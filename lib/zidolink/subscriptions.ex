@@ -215,4 +215,15 @@ defmodule Zidolink.Subscriptions do
     )
     |> Repo.preload(:trainer)
   end
+
+  def get_current_subscription(client_id, trainer_id) do
+    Repo.one(
+      from s in Subscription,
+        where:
+          s.client_id == ^client_id and s.trainer_id == ^trainer_id and
+            s.kind in ["weekly", "monthly"],
+        order_by: [desc: s.inserted_at],
+        limit: 1
+    )
+  end
 end

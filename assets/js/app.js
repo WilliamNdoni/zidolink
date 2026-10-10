@@ -117,7 +117,9 @@ const ActiveNavLink = {
   highlight() {
     const path = window.location.pathname
     this.el.querySelectorAll("a[href]").forEach((link) => {
-      const isActive = link.getAttribute("href") === path
+      const href = link.getAttribute("href")
+      const isActive =
+        href === path || (href === "/client/requests" && path.startsWith("/trainers/"))
       link.classList.toggle("bg-[#FF6F5E]", isActive)
       link.classList.toggle("text-white", isActive)
       link.classList.toggle("hover:bg-[#FF6F5E]", isActive)

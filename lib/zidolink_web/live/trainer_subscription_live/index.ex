@@ -62,6 +62,7 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
     user = socket.assigns.current_scope.user
     item = Enum.find(socket.assigns.requests, &(&1.request.id == String.to_integer(id)))
     request = item.request
+    is_requote = request.quote_history != []
 
     case Subscriptions.set_quote(request, String.to_integer(price)) do
       {:ok, updated} ->
@@ -73,7 +74,8 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
           trainer_profile.display_name || user.email,
           updated.price + settings.platform_markup_fee,
           updated.kind,
-          url(~p"/trainers/#{trainer_profile.id}")
+          url(~p"/trainers/#{trainer_profile.id}"),
+          is_requote
         )
 
         {:noreply,

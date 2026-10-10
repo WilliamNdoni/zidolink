@@ -24,9 +24,18 @@ defmodule Zidolink.Notifier do
     """)
   end
 
-  def deliver_quote_notification(client_email, trainer_name, price, kind, url) do
-    deliver(client_email, "#{trainer_name} sent you a price quote", """
-    #{trainer_name} has sent you a quote of KES #{price} for a #{kind} subscription.
+  def deliver_quote_notification(client_email, trainer_name, price, kind, url, is_requote \\ false) do
+    {subject, intro} =
+      if is_requote do
+        {"#{trainer_name} sent you a new price quote",
+         "#{trainer_name} has sent you a new quote of KES #{price} for a #{kind} subscription."}
+      else
+        {"#{trainer_name} sent you a price quote",
+         "#{trainer_name} has sent you a quote of KES #{price} for a #{kind} subscription."}
+      end
+
+    deliver(client_email, subject, """
+    #{intro}
 
     View it and pay or decline here:
     #{url}
