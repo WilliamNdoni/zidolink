@@ -111,11 +111,25 @@ const LocationPicker = {
   }
 }
 
+const ActiveNavLink = {
+  mounted() { this.highlight() },
+  updated() { this.highlight() },
+  highlight() {
+    const path = window.location.pathname
+    this.el.querySelectorAll("a[href]").forEach((link) => {
+      const isActive = link.getAttribute("href") === path
+      link.classList.toggle("bg-[#FF6F5E]", isActive)
+      link.classList.toggle("text-white", isActive)
+      link.classList.toggle("hover:bg-[#FF6F5E]", isActive)
+    })
+  }
+}
+
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   params: {_csrf_token: csrfToken},
-  hooks: {...colocatedHooks, LocationPicker},
+  hooks: {...colocatedHooks, LocationPicker, ActiveNavLink},
 })
 
 // Show progress bar on live navigation and form submits
