@@ -155,7 +155,7 @@ defmodule ZidolinkWeb.Layouts do
                 class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-[#EDE0D1]"
               >
                 <.icon name="hero-envelope" class="size-5 text-[#776779]" />
-                Subscriptions
+                Requests
               </.link>
 
               <.link
@@ -184,6 +184,22 @@ defmodule ZidolinkWeb.Layouts do
               >
                 <.icon name="hero-home" class="size-5 text-[#776779]" />
                 Dashboard
+              </.link>
+              
+              <.link
+                href={~p"/trainers"}
+                class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-[#EDE0D1]"
+              >
+                <.icon name="hero-magnifying-glass" class="size-5 text-[#776779]" />
+                Find a Trainer
+              </.link>
+
+              <.link
+                href={~p"/client/requests"}
+                class="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors hover:bg-[#EDE0D1]"
+              >
+                <.icon name="hero-envelope" class="size-5 text-[#776779]" />
+                My Requests
               </.link>
 
               <.link

@@ -180,4 +180,39 @@ defmodule Zidolink.Subscriptions do
   defp period_for_kind("monthly"), do: {30, :day}
   defp period_for_kind(_), do: {30, :day}
 
+  def list_clients_for_trainer(trainer_id) do
+    Repo.all(
+      from s in Subscription,
+        where:
+          s.trainer_id == ^trainer_id and s.kind in ["weekly", "monthly"] and
+            s.status in ["active", "expired", "cancelled"],
+        order_by: [desc: s.inserted_at]
+    )
+    |> Repo.preload(:client)
+    |> Enum.uniq_by(& &1.client_id)
+    |> Enum.map(fn sub -> {sub, client_category(sub)} end)
+  end
+
+  defp client_category(%{status: "active", ends_at: ends_at}) when not is_nil(ends_at) do
+    if DateTime.compare(DateTime.utc_now(), ends_at) == :gt, do: :overdue, else: :active
+  end
+
+  defp client_category(%{status: "active"}), do: :active
+  defp client_category(_), do: :inactive
+
+  def count_actionable_requests_for_trainer(trainer_id) do
+    Repo.aggregate(
+      from(s in Subscription, where: s.trainer_id == ^trainer_id and s.status in ["pending_quote", "declined"]),
+      :count
+    )
+  end
+
+  def list_requests_for_client(client_id) do
+    Repo.all(
+      from s in Subscription,
+        where: s.client_id == ^client_id and s.kind in ["weekly", "monthly"],
+        order_by: [desc: s.updated_at]
+    )
+    |> Repo.preload(:trainer)
+  end
 end

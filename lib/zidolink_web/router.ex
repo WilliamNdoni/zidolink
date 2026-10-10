@@ -71,6 +71,8 @@ defmodule ZidolinkWeb.Router do
       live "/seller/profile", SellerProfileLive.Edit, :edit
       live "/trainer/subscriptions", TrainerSubscriptionLive.Index, :index
       live "/client/profile", ClientProfileLive.Edit, :edit
+      live "/trainer/clients", TrainerClientLive.Index, :index
+      live "/client/requests", ClientRequestLive.Index, :index
     end
 
     post "/users/update-password", UserSessionController, :update_password
