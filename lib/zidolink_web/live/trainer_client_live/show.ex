@@ -76,30 +76,36 @@ defmodule ZidolinkWeb.TrainerClientLive.Show do
           </div>
         </div>
 
-        <div class="border rounded-lg p-4 mt-4">
-          <h3 class="font-semibold text-sm mb-2">Goal</h3>
-          <p class="text-sm text-base-content/80">
-            {@client_profile.goal_text || "No goal set by client yet."}
-          </p>
-          <p :if={@client_profile.target_weight_kg} class="text-sm text-base-content/80 mt-1">
-            Target weight: {@client_profile.target_weight_kg} kg
-          </p>
-        </div>
-
-        <div class="border rounded-lg p-4 mt-4">
-          <h3 class="font-semibold text-sm mb-2">Profile</h3>
-          <div class="text-sm text-base-content/80 space-y-1">
-            <p :if={@client_profile.height_cm}>Height: {@client_profile.height_cm} cm</p>
-            <p :if={@client_profile.age}>Age: {@client_profile.age}</p>
-            <p :if={@client_profile.gender}>Gender: {String.capitalize(@client_profile.gender)}</p>
-            <p :if={@client_profile.activity_level}>
-              Activity level: {String.capitalize(String.replace(@client_profile.activity_level, "_", " "))}
+        <%= if @subscription.status == "active" do %>
+          <div class="border rounded-lg p-4 mt-4">
+            <h3 class="font-semibold text-sm mb-2">Goal</h3>
+            <p class="text-sm text-base-content/80">
+              {@client_profile.goal_text || "No goal set by client yet."}
             </p>
-            <p :if={!@client_profile.height_cm && !@client_profile.age} class="text-base-content/60">
-              Client hasn't filled in their profile details yet.
+            <p :if={@client_profile.target_weight_kg} class="text-sm text-base-content/80 mt-1">
+              Target weight: {@client_profile.target_weight_kg} kg
             </p>
           </div>
-        </div>
+
+          <div class="border rounded-lg p-4 mt-4">
+            <h3 class="font-semibold text-sm mb-2">Profile</h3>
+            <div class="text-sm text-base-content/80 space-y-1">
+              <p :if={@client_profile.height_cm}>Height: {@client_profile.height_cm} cm</p>
+              <p :if={@client_profile.age}>Age: {@client_profile.age}</p>
+              <p :if={@client_profile.gender}>Gender: {String.capitalize(@client_profile.gender)}</p>
+              <p :if={@client_profile.activity_level}>
+                Activity level: {String.capitalize(String.replace(@client_profile.activity_level, "_", " "))}
+              </p>
+              <p :if={!@client_profile.height_cm && !@client_profile.age} class="text-base-content/60">
+                Client hasn't filled in their profile details yet.
+              </p>
+            </div>
+          </div>
+        <% else %>
+          <div class="border rounded-lg p-4 mt-4 text-center text-sm text-base-content/60">
+            Goal and profile details are only visible while this client has an active subscription with you.
+          </div>
+        <% end %>
       </div>
     </Layouts.app>
     """
@@ -143,15 +149,21 @@ defmodule ZidolinkWeb.TrainerClientLive.Show do
   def handle_event("cancel_edit_due_date", _params, socket), do: {:noreply, assign(socket, editing_due_date: false)}
 
   def handle_event("update_rate", %{"price" => price}, socket) do
-    case Subscriptions.update_subscription(socket.assigns.subscription, %{price: String.to_integer(price)}) do
-      {:ok, updated} ->
-        {:noreply,
-         socket
-         |> put_flash(:info, "Rate updated.")
-         |> assign(subscription: updated, editing_rate: false)}
+    case Integer.parse(price) do
+      {parsed, _} ->
+        case Subscriptions.update_subscription(socket.assigns.subscription, %{price: parsed}) do
+          {:ok, updated} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, "Rate updated.")
+             |> assign(subscription: updated, editing_rate: false)}
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Couldn't update the rate — please check the value.")}
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Couldn't update the rate — please check the value.")}
+        end
+
+      :error ->
+        {:noreply, put_flash(socket, :error, "Please enter a valid number.")}
     end
   end
 

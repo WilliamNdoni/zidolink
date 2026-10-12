@@ -43,7 +43,20 @@ defmodule Zidolink.Profiles.ClientProfile do
     |> validate_number(:age, greater_than: 0, less_than: 120)
     |> validate_number(:height_cm, greater_than: 0)
     |> validate_number(:target_weight_kg, greater_than: 0)
+    |> validate_goal_word_count()
     |> foreign_key_constraint(:user_id)
     |> unique_constraint(:user_id)
+  end
+
+  defp validate_goal_word_count(changeset) do
+    validate_change(changeset, :goal_text, fn :goal_text, value ->
+      word_count = value |> String.split(~r/\s+/, trim: true) |> length()
+
+      if word_count > 150 do
+        [goal_text: "must be 150 words or fewer (currently #{word_count})"]
+      else
+        []
+      end
+    end)
   end
 end

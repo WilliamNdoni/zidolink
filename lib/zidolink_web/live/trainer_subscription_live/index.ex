@@ -64,27 +64,33 @@ defmodule ZidolinkWeb.TrainerSubscriptionLive.Index do
     request = item.request
     is_requote = request.quote_history != []
 
-    case Subscriptions.set_quote(request, String.to_integer(price)) do
-      {:ok, updated} ->
-        trainer_profile = Zidolink.Profiles.get_trainer_profile_by_user_id(user.id)
-        settings = Zidolink.PlatformSettings.get_settings()
+    case Integer.parse(price) do
+      :error ->
+        {:noreply, put_flash(socket, :error, "Please enter a valid price.")}
 
-        Zidolink.Notifier.deliver_quote_notification(
-          item.request.client.email,
-          trainer_profile.display_name || user.email,
-          updated.price + settings.platform_markup_fee,
-          updated.kind,
-          url(~p"/trainers/#{trainer_profile.id}"),
-          is_requote
-        )
+      {parsed_price, _} ->
+        case Subscriptions.set_quote(request, parsed_price) do
+          {:ok, updated} ->
+            trainer_profile = Zidolink.Profiles.get_trainer_profile_by_user_id(user.id)
+            settings = Zidolink.PlatformSettings.get_settings()
 
-        {:noreply,
-         socket
-         |> put_flash(:info, "Quote sent to #{item.request.client.email}.")
-         |> assign(requests: load_requests(user.id))}
+            Zidolink.Notifier.deliver_quote_notification(
+              item.request.client.email,
+              trainer_profile.display_name || user.email,
+              updated.price + settings.platform_markup_fee,
+              updated.kind,
+              url(~p"/trainers/#{trainer_profile.id}"),
+              is_requote
+            )
 
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, "Couldn't send the quote — please try again.")}
+            {:noreply,
+             socket
+             |> put_flash(:info, "Quote sent to #{item.request.client.email}.")
+             |> assign(requests: load_requests(user.id))}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Couldn't send the quote — please try again.")}
+        end
     end
   end
 

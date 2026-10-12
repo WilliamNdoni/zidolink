@@ -12,10 +12,24 @@ defmodule ZidolinkWeb.DashboardLive.Index do
 
         <div :if={"client" in @current_scope.user.roles} class="mt-6 border rounded-lg p-4">
           <h3 class="font-semibold">As a client</h3>
-          <p class="text-sm text-base-content/80 mt-1">
-            Browsing and subscribing to trainers is coming soon — check back here once it's live.
-          </p>
-          <.link href={~p"/client/profile"} class="btn btn-primary btn-sm mt-2">Edit your profile</.link>
+
+          <%= if @client_profile && @client_profile.goal_text do %>
+            <p class="text-sm text-base-content/80 mt-1">
+              Goal: {@client_profile.goal_text}
+              <span :if={@client_profile.target_weight_kg}>(Target: {@client_profile.target_weight_kg}kg)</span>
+            </p>
+          <% else %>
+            <p class="text-sm text-base-content/80 mt-1">
+              Set a fitness goal so your trainer knows what you're working toward.
+            </p>
+          <% end %>
+
+          <div class="flex gap-2 mt-2 flex-wrap">
+            <.link href={~p"/client/profile"} class="btn btn-primary btn-sm">
+              {if @client_profile && @client_profile.goal_text, do: "Edit goal", else: "Set your goal"}
+            </.link>
+            <.link href={~p"/trainers"} class="btn btn-primary btn-sm">Find a Trainer</.link>
+          </div>
         </div>
 
         <div :if={"trainer" in @current_scope.user.roles} class="mt-6 border rounded-lg p-4">
@@ -64,6 +78,13 @@ defmodule ZidolinkWeb.DashboardLive.Index do
     user = socket.assigns.current_scope.user
     trainer_profile = "trainer" in user.roles && Profiles.get_trainer_profile_by_user_id(user.id)
     seller_profile = "seller" in user.roles && Profiles.get_seller_profile_by_user_id(user.id)
-    {:ok, assign(socket, trainer_profile: trainer_profile, seller_profile: seller_profile)}
+    client_profile = "client" in user.roles && Profiles.get_client_profile_by_user_id(user.id)
+
+    {:ok,
+     assign(socket,
+       trainer_profile: trainer_profile,
+       seller_profile: seller_profile,
+       client_profile: client_profile
+     )}
   end
 end
