@@ -226,4 +226,28 @@ defmodule Zidolink.Subscriptions do
         limit: 1
     )
   end
+
+  def renew_subscription(subscription) do
+    now = DateTime.utc_now() |> DateTime.truncate(:second)
+
+    base =
+      if subscription.ends_at && DateTime.compare(subscription.ends_at, now) == :gt do
+        subscription.ends_at
+      else
+        now
+      end
+
+    {days, _} = period_for_kind(subscription.kind)
+    new_ends_at = DateTime.add(base, days, :day)
+
+    case update_subscription(subscription, %{ends_at: new_ends_at, invoice_id: nil}) do
+      {:ok, updated} ->
+        broadcast_update(updated)
+        {:ok, updated}
+
+      error ->
+        error
+    end
+  end
+
 end

@@ -144,8 +144,30 @@ defmodule ZidolinkWeb.TrainerLive.Show do
               </p>
               <.link href={~p"/client/requests"} class="btn btn-primary btn-sm">Back to My Requests</.link>
             <% @subscription_request && @subscription_request.status == "active" -> %>
-              <p class="text-sm text-success mb-2">You have an active {@subscription_request.kind} subscription.</p>
-              <.link href={~p"/dashboard"} class="btn btn-primary btn-sm">Back to Dashboard</.link>
+              <p class="text-sm text-success mb-1">You have an active {@subscription_request.kind} subscription.</p>
+              <p :if={@subscription_request.ends_at} class="text-sm text-base-content/60 mb-2">
+                {renewal_message(@subscription_request.ends_at)}
+              </p>
+
+              <%= if @renewing do %>
+                <div class="text-center">
+                  <p class="text-sm mb-2">Confirm KES {@subscription_request.price + @platform_markup_fee} on your phone.</p>
+                  <div :if={!@renew_poll_timed_out}><span class="loading loading-spinner loading-md"></span></div>
+                  <p :if={@renew_poll_timed_out} class="text-error text-sm mt-2">
+                    We didn't receive confirmation — this sometimes happens. You can try again.
+                  </p>
+                  <.button :if={@renew_poll_timed_out} phx-click="retry_renewal" class="btn btn-primary btn-sm mt-2">
+                    Try again
+                  </.button>
+                </div>
+              <% else %>
+                <div class="flex gap-2">
+                  <.button phx-click="renew_subscription" class="btn btn-primary btn-sm">
+                    Renew — KES {@subscription_request.price + @platform_markup_fee}
+                  </.button>
+                  <.link href={~p"/dashboard"} class="btn btn-outline btn-sm">Back to Dashboard</.link>
+                </div>
+              <% end %>
             <% true -> %>
               <div class="flex gap-2">
                 <.button phx-click="request_subscription" phx-value-kind="weekly" class="btn btn-primary btn-sm">
@@ -204,6 +226,9 @@ defmodule ZidolinkWeb.TrainerLive.Show do
        sub_poll_timed_out: false,
        show_decline_form: false,
        decline_reasons: @decline_reasons,
+       renewing: false,
+       renew_poll_deadline: nil,
+       renew_poll_timed_out: false,
        platform_markup_fee: settings.platform_markup_fee
      )}
   end
@@ -291,6 +316,16 @@ defmodule ZidolinkWeb.TrainerLive.Show do
     end
   end
 
+  def handle_event("renew_subscription", _params, socket) do
+    user = socket.assigns.current_user
+    {:noreply, trigger_renewal_payment(socket, socket.assigns.subscription_request, user)}
+  end
+
+  def handle_event("retry_renewal", _params, socket) do
+    user = socket.assigns.current_user
+    {:noreply, socket |> assign(renew_poll_timed_out: false) |> trigger_renewal_payment(socket.assigns.subscription_request, user)}
+  end
+
   @impl true
   def handle_info(:poll_booking_status, socket) do
     booking = socket.assigns.booking
@@ -349,6 +384,32 @@ defmodule ZidolinkWeb.TrainerLive.Show do
     {:noreply, assign(socket, subscription_request: updated, show_decline_form: false)}
   end
 
+  def handle_info(:poll_renewal_status, socket) do
+    request = socket.assigns.subscription_request
+
+    cond do
+      is_nil(request) or is_nil(request.invoice_id) ->
+        {:noreply, socket}
+
+      DateTime.compare(DateTime.utc_now(), socket.assigns.renew_poll_deadline) == :gt ->
+        {:noreply, assign(socket, renew_poll_timed_out: true)}
+
+      true ->
+        case Intasend.check_status(request.invoice_id) do
+          {:ok, %{"invoice" => %{"state" => "COMPLETE"}}} ->
+            {:ok, updated} = Subscriptions.renew_subscription(request)
+            {:noreply, assign(socket, subscription_request: updated, renewing: false)}
+
+          {:ok, %{"invoice" => %{"state" => "FAILED"}}} ->
+            {:noreply, assign(socket, renew_poll_timed_out: true)}
+
+          _ ->
+            schedule_poll(:poll_renewal_status)
+            {:noreply, socket}
+        end
+    end
+  end
+
   defp trigger_booking_payment(socket, booking, user) do
     total = booking.price + socket.assigns.platform_markup_fee
     api_ref = "booking-#{booking.id}"
@@ -390,4 +451,37 @@ defmodule ZidolinkWeb.TrainerLive.Show do
   defp schedule_poll(message) do
     Process.send_after(self(), message, @poll_interval)
   end
+
+  defp trigger_renewal_payment(socket, request, user) do
+    total = request.price + socket.assigns.platform_markup_fee
+    api_ref = "renewal-#{request.id}-#{System.unique_integer([:positive])}"
+
+    case Intasend.stk_push(user.phone, total, api_ref) do
+      {:ok, %{"invoice" => %{"invoice_id" => invoice_id}}} ->
+        {:ok, updated} = Subscriptions.update_subscription(request, %{invoice_id: invoice_id})
+        deadline = DateTime.add(DateTime.utc_now(), @poll_timeout_ms, :millisecond)
+        schedule_poll(:poll_renewal_status)
+
+        assign(socket,
+          subscription_request: updated,
+          renewing: true,
+          renew_poll_deadline: deadline,
+          renew_poll_timed_out: false
+        )
+
+      {:error, _reason} ->
+        put_flash(socket, :error, "We couldn't start the payment request — please try again.")
+    end
+  end
+
+  defp renewal_message(ends_at) do
+    days = DateTime.diff(ends_at, DateTime.utc_now(), :day)
+
+    cond do
+      days > 0 -> "Due in #{days} day#{if days != 1, do: "s"}"
+      days == 0 -> "Due today"
+      true -> "Overdue by #{abs(days)} day#{if abs(days) != 1, do: "s"}"
+    end
+  end
+
 end
