@@ -21,14 +21,15 @@ defmodule ZidolinkWeb.TrainerClientLive.Index do
           </button>
         </div>
 
-        <input
-          type="text"
-          phx-change="search"
-          name="q"
-          value={@query}
-          placeholder="Search by name or email..."
-          class="input input-bordered w-full mt-4"
-        />
+        <form phx-change="search" class="mt-4">
+          <input
+            type="text"
+            name="q"
+            value={@query}
+            placeholder="Search by name or email..."
+            class="input input-bordered w-full"
+          />
+        </form>
 
         <div :if={@filtered == []} class="mt-6 text-center text-base-content/80">
           No clients here yet.

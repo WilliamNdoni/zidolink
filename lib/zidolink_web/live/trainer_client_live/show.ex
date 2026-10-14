@@ -101,6 +101,11 @@ defmodule ZidolinkWeb.TrainerClientLive.Show do
               </p>
             </div>
           </div>
+
+          <.link href={~p"/trainer/clients/#{@client.id}/meal-plan"} class="btn btn-primary w-full sm:w-auto mt-3">
+            Go to Meal Plan
+          </.link>
+
         <% else %>
           <div class="border rounded-lg p-4 mt-4 text-center text-sm text-base-content/60">
             Goal and profile details are only visible while this client has an active subscription with you.

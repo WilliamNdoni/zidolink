@@ -28,11 +28,25 @@ defmodule Zidolink.MealPlans do
     Repo.preload(plan, meal_slots: {from(s in MealSlot, order_by: [asc: s.day_of_week, asc: s.position]), [:meal_items]})
   end
 
+
+
   @doc """
   Fetches a client's plan, or creates one owned by the given trainer if none exists yet.
   Only call this for a trainer who already has a confirmed active subscription with the client,
   that check belongs to the caller, this function trusts it.
   """
+  def create_meal_plan_for_client(client_id, trainer_id, structure) do
+    result =
+      %MealPlan{}
+      |> MealPlan.changeset(%{client_id: client_id, owner_trainer_id: trainer_id, structure: structure})
+      |> Repo.insert()
+
+    case result do
+      {:ok, plan} -> {:ok, maybe_preload(plan)}
+      error -> error
+    end
+  end
+
   def ensure_meal_plan(client_id, trainer_id) do
     case get_meal_plan_by_client_id(client_id) do
       nil ->
@@ -60,6 +74,43 @@ defmodule Zidolink.MealPlans do
   end
 
   def is_owner?(%MealPlan{owner_trainer_id: owner_id}, trainer_id), do: owner_id == trainer_id
+
+  @doc """
+  Switches a plan from same_daily to custom_per_day. Existing meals are kept,
+  reassigned to Monday, and nothing is deleted, matching the never-delete-data rule.
+  """
+  def switch_to_custom_per_day(%MealPlan{} = plan) do
+    Repo.transaction(fn ->
+      from(s in MealSlot, where: s.meal_plan_id == ^plan.id and is_nil(s.day_of_week))
+      |> Repo.update_all(set: [day_of_week: 1])
+
+      {:ok, updated} = plan |> MealPlan.changeset(%{structure: "custom_per_day"}) |> Repo.update()
+      updated
+    end)
+    |> case do
+      {:ok, updated} -> broadcast_change(updated.client_id); {:ok, maybe_preload(updated)}
+      error -> error
+    end
+  end
+
+  @doc """
+  Switches a plan from custom_per_day to same_daily. Only Monday's meals stay active,
+  every other day's meals are kept in the database but deactivated, not deleted,
+  so their history and any future compliance records remain intact.
+  """
+  def switch_to_same_daily(%MealPlan{} = plan) do
+    Repo.transaction(fn ->
+      from(s in MealSlot, where: s.meal_plan_id == ^plan.id and s.day_of_week != 1)
+      |> Repo.update_all(set: [active: false])
+
+      {:ok, updated} = plan |> MealPlan.changeset(%{structure: "same_daily"}) |> Repo.update()
+      updated
+    end)
+    |> case do
+      {:ok, updated} -> broadcast_change(updated.client_id); {:ok, maybe_preload(updated)}
+      error -> error
+    end
+  end
 
   ## Meal slots
 

@@ -41,4 +41,38 @@ defmodule Zidolink.Notifier do
     #{url}
     """)
   end
+
+  def deliver_takeover_requested(client_email, trainer_name, url) do
+    deliver(client_email, "#{trainer_name} wants to manage your meal plan", """
+    #{trainer_name} has requested to take over managing your meal plan.
+
+    Review and respond here:
+    #{url}
+    """)
+  end
+
+  def deliver_takeover_approved(trainer_email, client_email, url) do
+    deliver(trainer_email, "You now manage #{client_email}'s meal plan", """
+    Your request to take over #{client_email}'s meal plan has been approved.
+
+    View and edit it here:
+    #{url}
+    """)
+  end
+
+  def deliver_takeover_declined(trainer_email, client_email) do
+    deliver(trainer_email, "Meal plan request declined", """
+    #{client_email} has declined your request to take over their meal plan.
+    """)
+  end
+
+  def deliver_meal_plan_ready(client_email, trainer_name, url) do
+    deliver(client_email, "#{trainer_name} has set up your meal plan", """
+    #{trainer_name} has set up your meal plan on ZidoLink.
+
+    View it here:
+    #{url}
+    """)
+  end
+
 end

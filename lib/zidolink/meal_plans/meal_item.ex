@@ -2,7 +2,7 @@ defmodule Zidolink.MealPlans.MealItem do
   use Ecto.Schema
   import Ecto.Changeset
 
-  @units ["g", "ml"]
+  @units ["g", "ml", "nos", "tbsp", "tsp"]
 
   schema "meal_items" do
     field :food, :string
